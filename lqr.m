@@ -1,4 +1,4 @@
-    function [Ad, Bd, Kd] = rip_dlqr_gain()
+function [Ad, Bd, Kd] = rip_dlqr_gain()
     mp   = 0.063;
     lp   = 0.08;
     r    = 0.15;
@@ -21,12 +21,12 @@
          (Kt*(Jp+mp*lp^2))/(Rm*M);
          (Kt*(mp*lp*r))/(Rm*M)];
     
-    Ts = 1.0 / 1000.0;  % 1000 Hz
+    Ts = 1.0 / 1000.0;
     sysd = c2d(ss(A,B,eye(4),zeros(4,1)), Ts);
     Ad = sysd.A;
     Bd = sysd.B;
     
-    Q = diag([10 600 1 10]);  % Corrected Q
+    Q = diag([10 600 1 10]);
     R = 0.05;
     [Kd,~,~] = dlqr(Ad,Bd,Q,R);
     
@@ -34,8 +34,9 @@
     disp(Ad);
     fprintf('Bd vector:\n');
     disp(Bd);
-    fprintf('Kd gains:\n');
-    disp(Kd);
-    end
-    
-    [Ad, Bd, Kd] = rip_dlqr_gain();
+    fprintf('float32_t K_matlab[4] = {');
+    fprintf('%+.4ff, ', Kd(1:end-1));
+    fprintf('%+.4ff};\n', Kd(end));
+end
+
+[Ad, Bd, Kd] = rip_dlqr_gain();

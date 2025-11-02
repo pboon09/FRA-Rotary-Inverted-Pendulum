@@ -49,16 +49,20 @@ int cmd_energy, cmd_lqr;
 
 float alpha, alpha_dot, theta, theta_dot;
 
-uint8_t lqr_ready_flag = 0;  // 0 = Energy, 1 = LQR
+typedef enum {
+	STATE_IDLE = 0, STATE_KICK, STATE_SWINGUP, STATE_LQR, STATE_WAIT_BUTTON
+} PendulumState;
 
-uint8_t state = 0;
-uint16_t kick_counter = 0;
+PendulumState state = STATE_IDLE;
+int kick_counter = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 static inline float wrap_pi(float x);
+static inline float wrap_2pi(float x);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -164,56 +168,75 @@ static inline float wrap_pi(float x) {
 	return x;
 }
 
+static inline float wrap_2pi(float x) {
+    while (x >= 2.0f * M_PI)
+        x -= 2.0f * M_PI;
+    while (x < 0.0f)
+        x += 2.0f * M_PI;
+    return x;
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-    if (htim == &htim2) {
-        QEI_get_diff_count(&motor_encoder);
-        QEI_compute_data(&motor_encoder);
-        QEI_get_diff_count(&pendulum_encoder);
-        QEI_compute_data(&pendulum_encoder);
+	if (htim == &htim2) {
+		QEI_get_diff_count(&motor_encoder);
+		QEI_compute_data(&motor_encoder);
+		QEI_get_diff_count(&pendulum_encoder);
+		QEI_compute_data(&pendulum_encoder);
 
-        alpha = pendulum_encoder.rads;
-        alpha_dot = FIR_process(&alpha_dot_filter, pendulum_encoder.radps);
-        theta = motor_encoder.rads;
-        theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
+		alpha = wrap_2pi(pendulum_encoder.rads);
+		alpha_dot = FIR_process(&alpha_dot_filter, pendulum_encoder.radps);
+		theta = motor_encoder.rads;
+		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
 
-        float alpha_shifted = wrap_pi(alpha - M_PI);
+		float alpha_shifted = wrap_pi(alpha - M_PI);
 
-        if (state == 0) {
-            if (fabsf(alpha_dot) < 0.3f && fabsf(alpha_shifted) > 2.5f) {
-                state = 1;
-                kick_counter = 0;
-            }
-            MDXX_set_range(&motor, 2000, 0);
-
-        } else if (state == 1) {
-            if (fabsf(alpha_shifted) < 0.30f) {
-                state = 2;
-            }
-
-            if (kick_counter < 50) {
-                cmd_energy = (alpha > 0) ? 6000 : -6000;
-                kick_counter++;
-            } else if (fabsf(alpha) > 2.8f && fabsf(alpha_dot) < 0.5f) {
-                cmd_energy = (alpha > 0) ? 6000 : -6000;
-            } else {
-                cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
-                cmd_energy = (int)(cmd_energy_norm * 7000.0f);
-                cmd_energy = fminf(fmaxf(cmd_energy, -7000), 7000);
-            }
-            MDXX_set_range(&motor, 2000, cmd_energy);
-
-        } else if (state == 2) {
-            if (fabsf(alpha_shifted) > 1.0f) {
-                state = 0;
-            }
-
-            LQR_SetState(&lqr_ctrl, theta, alpha_shifted, theta_dot, alpha_dot);
-            cmd_lqr_volt = LQR_Update(&lqr_ctrl);
-            cmd_lqr = (int)(cmd_lqr_volt * 65535.0f / 24.0f);
-//            cmd_lqr = fminf(fmaxf(cmd_lqr, -7000), 7000);
-            MDXX_set_range(&motor, 2000, cmd_lqr);
-        }
-    }
+		switch (state) {
+		case STATE_IDLE:
+			if (fabsf(alpha_dot) < 0.3f && fabsf(alpha) < 0.2f) {
+				state = STATE_WAIT_BUTTON;
+				kick_counter = 0;
+			}
+			MDXX_set_range(&motor, 2000, 0);
+			break;
+		case STATE_KICK:
+			kick_counter++;
+			if (kick_counter < 200) {
+				MDXX_set_range(&motor, 2000, (kick_counter < 100) ? 6000 : -6000);
+			} else {
+				state = STATE_SWINGUP;
+			}
+			break;
+		case STATE_SWINGUP:
+			if (fabsf(alpha_shifted) < 0.30f) {
+				state = STATE_LQR;
+			} else {
+				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
+				cmd_energy = (int) (cmd_energy_norm * 7000.0f);
+				MDXX_set_range(&motor, 2000, cmd_energy);
+			}
+			break;
+		case STATE_LQR:
+			if (fabsf(alpha_shifted) > 1.2f) {
+				state = STATE_WAIT_BUTTON;
+				MDXX_set_range(&motor, 2000, 0);
+			} else {
+				LQR_SetState(&lqr_ctrl, theta, alpha_shifted, theta_dot,
+						alpha_dot);
+				cmd_lqr_volt = LQR_Update(&lqr_ctrl);
+				cmd_lqr = (int) (cmd_lqr_volt * 65535.0f / 24.0f);
+				MDXX_set_range(&motor, 2000, cmd_lqr);
+			}
+//			MDXX_set_range(&motor, 2000, 0);
+			break;
+		case STATE_WAIT_BUTTON:
+			if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
+				kick_counter = 0;
+				state = STATE_KICK;
+			}
+			MDXX_set_range(&motor, 2000, 0);
+			break;
+		}
+	}
 }
 /* USER CODE END 4 */
 
