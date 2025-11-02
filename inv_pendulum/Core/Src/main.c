@@ -47,10 +47,10 @@
 float cmd_energy_norm, cmd_lqr_volt;
 int cmd_energy, cmd_lqr;
 
-float alpha, alpha_dot, theta, theta_dot;
+float alpha, alpha_shifted, alpha_dot, theta, theta_dot;
 
 typedef enum {
-	STATE_IDLE = 0, STATE_KICK, STATE_SWINGUP, STATE_LQR, STATE_WAIT_BUTTON
+	STATE_IDLE = 0, STATE_WAIT_BUTTON, STATE_KICK, STATE_SWINGUP, STATE_LQR
 } PendulumState;
 
 PendulumState state = STATE_IDLE;
@@ -169,11 +169,11 @@ static inline float wrap_pi(float x) {
 }
 
 static inline float wrap_2pi(float x) {
-    while (x >= 2.0f * M_PI)
-        x -= 2.0f * M_PI;
-    while (x < 0.0f)
-        x += 2.0f * M_PI;
-    return x;
+	while (x >= 2.0f * M_PI)
+		x -= 2.0f * M_PI;
+	while (x < 0.0f)
+		x += 2.0f * M_PI;
+	return x;
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -188,35 +188,43 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		theta = motor_encoder.rads;
 		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
 
-		float alpha_shifted = wrap_pi(alpha - M_PI);
+		alpha_shifted = wrap_pi(alpha - M_PI);
 
 		switch (state) {
 		case STATE_IDLE:
 			if (fabsf(alpha_dot) < 0.3f && fabsf(alpha) < 0.2f) {
-				state = STATE_WAIT_BUTTON;
 				kick_counter = 0;
+				state = STATE_WAIT_BUTTON;
+			}
+			MDXX_set_range(&motor, 2000, 0);
+			break;
+		case STATE_WAIT_BUTTON:
+			if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
+				kick_counter = 0;
+				state = STATE_KICK;
 			}
 			MDXX_set_range(&motor, 2000, 0);
 			break;
 		case STATE_KICK:
 			kick_counter++;
 			if (kick_counter < 200) {
-				MDXX_set_range(&motor, 2000, (kick_counter < 100) ? 6000 : -6000);
+				MDXX_set_range(&motor, 2000,
+						(kick_counter < 100) ? 6000 : -6000);
 			} else {
 				state = STATE_SWINGUP;
 			}
 			break;
 		case STATE_SWINGUP:
-			if (fabsf(alpha_shifted) < 0.30f) {
+			if (fabsf(alpha_shifted) < 0.1f) {
 				state = STATE_LQR;
 			} else {
 				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
-				cmd_energy = (int) (cmd_energy_norm * 7000.0f);
+				cmd_energy = (int) (cmd_energy_norm * 6000.0f);
 				MDXX_set_range(&motor, 2000, cmd_energy);
 			}
 			break;
 		case STATE_LQR:
-			if (fabsf(alpha_shifted) > 1.2f) {
+			if (fabsf(alpha_shifted) > 1.57f) {
 				state = STATE_WAIT_BUTTON;
 				MDXX_set_range(&motor, 2000, 0);
 			} else {
@@ -226,14 +234,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 				cmd_lqr = (int) (cmd_lqr_volt * 65535.0f / 24.0f);
 				MDXX_set_range(&motor, 2000, cmd_lqr);
 			}
-//			MDXX_set_range(&motor, 2000, 0);
-			break;
-		case STATE_WAIT_BUTTON:
-			if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
-				kick_counter = 0;
-				state = STATE_KICK;
-			}
-			MDXX_set_range(&motor, 2000, 0);
 			break;
 		}
 	}
