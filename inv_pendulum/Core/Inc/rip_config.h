@@ -34,7 +34,7 @@ extern EnergyCtrl swingup;
 #define PENDULUM_LENGTH 0.08
 #define PENDULUM_INERTIA 1.79E-5
 #define GRAVITY 9.812
-#define ENERYGY_GAIN 3.0
+#define ENERYGY_GAIN 1.5
 
 extern FIR alpha_dot_filter;
 extern FIR theta_dot_filter;

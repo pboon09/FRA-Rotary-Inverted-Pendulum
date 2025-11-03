@@ -12,7 +12,7 @@ EnergyCtrl swingup;
 
 LQR_Controller lqr_ctrl;
 
-float32_t K_matlab[4] = { -8.4431f, 54.4311f, -3.9041f, 2.9956f };
+float32_t K_matlab[4] = { -3.2571f, 27.0816f, -2.0854f, 1.9780f };
 
 void config_begin() {
 	QEI_init(&motor_encoder, ENC_TIM1, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
