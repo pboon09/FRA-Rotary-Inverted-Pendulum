@@ -216,15 +216,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			break;
 		case STATE_KICK:
 			kick_counter++;
-			if (kick_counter < 700) {
+			if (kick_counter < 500) {
 				MDXX_set_range(&motor, 2000,
-						(kick_counter < 350) ? 6000 : -6000);
+						(kick_counter < 250) ? 6000 : -6000);
 			} else {
 				state = STATE_SWINGUP;
 			}
 			break;
 		case STATE_SWINGUP:
-			if (fabsf(alpha_shifted) < 0.5f) {
+			if (fabsf(alpha_shifted) < 0.25f) {
 				state = STATE_LQR;
 			} else {
 				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
@@ -240,7 +240,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 				LQR_SetState(&lqr_ctrl, theta, alpha_shifted, theta_dot,
 						alpha_dot);
 				cmd_lqr_volt = LQR_Update(&lqr_ctrl);
-				cmd_lqr = (int) (cmd_lqr_volt * 65535.0f / 24.0f);
+				cmd_lqr = (int) (cmd_lqr_volt * 65535.0f / MOTOR_VOLTAGE_LIMIT);
 				MDXX_set_range(&motor, 2000, cmd_lqr);
 			}
 			break;

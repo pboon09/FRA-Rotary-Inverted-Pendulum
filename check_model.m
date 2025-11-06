@@ -1,12 +1,26 @@
-mp   = 0.063;
-lp   = 0.08;
-r    = 0.15;
-Jp   = 1.79e-5;
-Jarm = 3.9e-4;
-Kt   = 0.062806525000000;
-Km   = 0.062806525000000;
-Rm   = 0.206024725847665;
-g    = 9.81;
+clc; clear; close all;
+
+% Parameters
+m1_val = 220.54e-3;      % Arm mass (kg)
+m2_val = 62.00e-3;       % Pendulum mass (kg)
+L1_com_val = 35.402e-3;  % Arm COM length from pivot (m)
+L2_com_val = 55.75e-3;   % Pendulum COM length from pivot (m)
+L_pivot_val = 133e-3;    % Distance from motor to pendulum pivot (m)
+I1_com_val = 769047.65e-9;   % Arm inertia about COM (kg·m²)
+I2_com_val = 130015.24e-9;   % Pendulum inertia about COM (kg·m²)
+g_val  = 9.81;            % Gravity (m/s²)
+
+Kt = 0.062806525000000;   % Motor torque constant (N·m/A)
+Km = 0.062806525000000;   % Back EMF constant (V·s/rad)
+Rm = 0.206024725847665;   % Armature resistance (Ω)
+
+% Derived parameters
+Jarm = I1_com_val + m1_val * L1_com_val^2;   % (kg·m²)
+Jp   = I2_com_val;                           % Pendulum inertia about COM (kg·m²)
+mp   = m2_val;                               % Pendulum mass (kg)
+r    = L_pivot_val;                          % Arm length to pendulum pivot (m)
+lp   = L2_com_val;                           % Pendulum COM length (m)
+g    = g_val;
 
 M = Jarm*Jp + Jp*mp*r^2 + Jarm*mp*lp^2;
 

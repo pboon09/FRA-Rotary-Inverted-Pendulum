@@ -30,9 +30,9 @@ extern QEI pendulum_encoder;
 #define MOTOR_RATIO 1.0
 
 extern EnergyCtrl swingup;
-#define PENDULUM_MASS 0.063
-#define PENDULUM_LENGTH 0.08
-#define PENDULUM_INERTIA 1.79E-5
+#define PENDULUM_MASS 0.062
+#define PENDULUM_LENGTH 55.75e-3
+#define PENDULUM_INERTIA 130015.24e-9
 #define GRAVITY 9.812
 #define ENERYGY_GAIN 1.5
 
@@ -43,7 +43,9 @@ extern FIR theta_dot_filter;
 #define SAMPLING_RATE 1000.0
 
 extern LQR_Controller lqr_ctrl;
-#define VOLTAGE_LIMIT 24.0
+#define VOLTAGE_LIMIT 10.0
+
+#define MOTOR_VOLTAGE_LIMIT 24.0
 
 void config_begin();
 
