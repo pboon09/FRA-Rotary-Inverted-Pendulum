@@ -7195,7 +7195,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_Phoenix_GMSTB:PhoenixContact_GMSTBA_2,5_2-G-7,62_1x02_P7.62mm_Horizontal"
+		(property "Footprint" "Connector_Phoenix_MC_HighVoltage:PhoenixContact_MC_1,5_2-G-5.08_1x02_P5.08mm_Horizontal"
 			(at 62.23 27.94 0)
 			(effects
 				(font
@@ -7746,7 +7746,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_Phoenix_GMSTB:PhoenixContact_GMSTBA_2,5_4-G-7,62_1x04_P7.62mm_Horizontal"
+		(property "Footprint" "Connector_Phoenix_MC_HighVoltage:PhoenixContact_MC_1,5_4-G-5.08_1x04_P5.08mm_Horizontal"
 			(at 90.17 81.28 0)
 			(effects
 				(font
@@ -8098,7 +8098,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_Phoenix_GMSTB:PhoenixContact_GMSTBA_2,5_3-G-7,62_1x03_P7.62mm_Horizontal"
+		(property "Footprint" "Connector_Phoenix_MC_HighVoltage:PhoenixContact_MC_1,5_3-G-5.08_1x03_P5.08mm_Horizontal"
 			(at 60.96 81.28 0)
 			(effects
 				(font
@@ -8445,7 +8445,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_Phoenix_GMSTB:PhoenixContact_GMSTBA_2,5_4-G-7,62_1x04_P7.62mm_Horizontal"
+		(property "Footprint" "Connector_Phoenix_MC_HighVoltage:PhoenixContact_MC_1,5_4-G-5.08_1x04_P5.08mm_Horizontal"
 			(at 121.92 81.28 0)
 			(effects
 				(font
@@ -9790,7 +9790,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_Phoenix_GMSTB:PhoenixContact_GMSTBA_2,5_4-G-7,62_1x04_P7.62mm_Horizontal"
+		(property "Footprint" "Connector_Phoenix_MC_HighVoltage:PhoenixContact_MC_1,5_4-G-5.08_1x04_P5.08mm_Horizontal"
 			(at 102.87 101.6 0)
 			(effects
 				(font
