@@ -2,7 +2,7 @@
 clear; clc;
 
 % Parameters
-L0 = 64e-3;   % Base height
+L0 = 92e-3;   % Base height
 L1 = 133e-3; % Arm length
 L2 = 135e-3; % Pendulum CoM length
 
