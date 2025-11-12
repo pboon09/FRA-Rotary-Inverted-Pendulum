@@ -48,6 +48,7 @@ install(TARGETS
 ################ INSTALL LAUNCH, ETC #################
 install(DIRECTORY
   # add directories here
+  config
   launch
   meshes
   urdf

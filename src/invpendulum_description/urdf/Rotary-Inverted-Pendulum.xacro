@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="Rotary_Inverted_Pendulum" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Base Link -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0.00019503 -1.6785e-06 0.019191" rpy="0 0 0"/>
+      <mass value="8.7934"/>
+      <inertia
+        ixx="0.03296"
+        ixy="-1.2953e-08"
+        ixz="1.3278e-09"
+        iyy="0.059793"
+        iyz="6.8808e-08"
+        izz="0.090142"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://invpendulum_description/meshes/base_link.STL"/>
+      </geometry>
+      <material name="gray">
+        <color rgba="0.65098 0.61961 0.58824 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://invpendulum_description/meshes/base_link.STL"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Arm Link -->
+  <link name="Arm_Link1">
+    <inertial>
+      <origin xyz="0.0191189780582279 -2.13351893908753e-06 0.0126487945771829" rpy="0 0 0"/>
+      <mass value="0.215027242047406"/>
+      <inertia
+        ixx="4.4776241646878e-05"
+        ixy="8.80683920929371e-10"
+        ixz="1.99972176522499e-09"
+        iyy="0.000234783071150826"
+        iyz="-4.06419213981252e-09"
+        izz="0.000267396198485261"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://invpendulum_description/meshes/Arm_Link1.STL"/>
+      </geometry>
+      <material name="white">
+        <color rgba="1 1 1 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://invpendulum_description/meshes/Arm_Link1.STL"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Joint between base and arm -->
+  <joint name="Rev_Arm" type="continuous">
+    <origin xyz="0.0002 0 0.212" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="Arm_Link1"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- Pendulum Link -->
+  <link name="Pendulum_Link2">
+    <inertial>
+      <origin xyz="0.038074 3.9254e-10 0.0081922" rpy="0 0 0"/>
+      <mass value="0.011664"/>
+      <inertia
+        ixx="1.3411e-06"
+        ixy="-5.6723e-14"
+        ixz="-5.8423e-13"
+        iyy="1.7968e-05"
+        iyz="-2.8301e-14"
+        izz="1.6783e-05"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://invpendulum_description/meshes/Pendulum_Link2.STL"/>
+      </geometry>
+      <material name="lightblue">
+        <color rgba="0.79216 0.81961 0.93333 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://invpendulum_description/meshes/Pendulum_Link2.STL"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- Joint between arm and pendulum -->
+  <joint name="Rev_Pendulum" type="continuous">
+    <origin xyz="0.1215 0 0.0255" rpy="0 ${pi/2} 0"/>
+    <parent link="Arm_Link1"/>
+    <child link="Pendulum_Link2"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+</robot>
