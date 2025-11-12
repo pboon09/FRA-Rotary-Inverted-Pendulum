@@ -1,0 +1,3 @@
+../Core/Src/energy_swingup.c:10:21:sat_smooth	16	static
+../Core/Src/energy_swingup.c:14:6:EnergyCtrl_Init	32	static
+../Core/Src/energy_swingup.c:28:7:EnergyCtrl_Update	32	static

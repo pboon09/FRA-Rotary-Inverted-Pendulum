@@ -28,6 +28,9 @@ ament_python_install_package(${PROJECT_NAME})
 # Install Python executables
 install(PROGRAMS
   scripts/dummy_script.py
+  scripts/joint_state_republisher.py
+  scripts/velocity_hud.py
+  scripts/theory_joint_state_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

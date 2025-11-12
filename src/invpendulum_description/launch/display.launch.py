@@ -17,8 +17,8 @@ def generate_launch_description():
     pkg_path = FindPackageShare('invpendulum_description')
 
     # File paths
-    default_model_path = PathJoinSubstitution([pkg_path, 'urdf', 'Rotary-Inverted-Pendulum.xacro'])
-    default_rviz_config_path = PathJoinSubstitution([pkg_path, 'rviz', 'rviz.rviz'])
+    default_model_path = PathJoinSubstitution([pkg_path, 'urdf', 'Rotary_Inverted_Pendulum.urdf'])
+    default_rviz_config_path = PathJoinSubstitution([pkg_path, 'config', 'rviz.rviz'])
     urdf_launch_path = PathJoinSubstitution([FindPackageShare('urdf_launch'), 'launch', 'display.launch.py'])
 
     # Arguments

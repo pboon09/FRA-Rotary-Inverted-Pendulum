@@ -13,6 +13,21 @@ RM := rm -rf
 -include Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/subdir.mk
 -include Middlewares/Third_Party/FreeRTOS/Source/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/TransformFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/SupportFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/StatisticsFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/SVMFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/QuaternionMathFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/MatrixFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/InterpolationFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/FilteringFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/FastMathFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/DistanceFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/ControllerFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/ComplexMathFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/CommonTables/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/BayesFunctions/subdir.mk
+-include Middlewares/Third_Party/ARM_CMSIS/Source/BasicMathFunctions/subdir.mk
 -include Drivers/STM32G4xx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
@@ -65,8 +80,8 @@ all:
 main-build: invpendulum_uros.elf secondary-outputs
 
 # Tool invocations
-invpendulum_uros.elf invpendulum_uros.map: $(OBJS) $(USER_OBJS) /home/b/invpendulum_ws/firmware/invpendulum_uros/STM32G474RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "invpendulum_uros.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/b/invpendulum_ws/firmware/invpendulum_uros/STM32G474RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="invpendulum_uros.map" -Wl,--gc-sections -static -L../micro_ros_stm32cubemx_utils/microros_static_library_ide/libmicroros --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+invpendulum_uros.elf invpendulum_uros.map: $(OBJS) $(USER_OBJS) /home/b/FRA-Rotary-Inverted-Pendulum/firmware/invpendulum_uros/STM32G474RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "invpendulum_uros.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/b/FRA-Rotary-Inverted-Pendulum/firmware/invpendulum_uros/STM32G474RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="invpendulum_uros.map" -Wl,--gc-sections -static -L../micro_ros_stm32cubemx_utils/microros_static_library_ide/libmicroros --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -86,7 +101,7 @@ clean:
 	-@echo ' '
 
 pre-build:
-	echo "1" | sudo -S docker pull microros/micro_ros_static_library_builder:humble && echo "1" | sudo -S docker run --rm -v /home/b/invpendulum_ws/firmware/invpendulum_uros:/project --env MICROROS_LIBRARY_FOLDER=micro_ros_stm32cubemx_utils/microros_static_library_ide microros/micro_ros_static_library_builder:humble
+	echo "1" | sudo -S docker pull microros/micro_ros_static_library_builder:humble && echo "1" | sudo -S docker run --rm -v /home/b/FRA-Rotary-Inverted-Pendulum/firmware/invpendulum_uros:/project --env MICROROS_LIBRARY_FOLDER=micro_ros_stm32cubemx_utils/microros_static_library_ide microros/micro_ros_static_library_builder:humble
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
