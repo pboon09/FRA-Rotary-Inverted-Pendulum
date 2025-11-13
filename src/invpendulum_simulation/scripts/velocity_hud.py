@@ -3,9 +3,8 @@ import rclpy
 from rclpy.node import Node
 from visualization_msgs.msg import Marker
 from sensor_msgs.msg import JointState
+from invpendulum_simulation.joint_name_config import NAME_MAP, ORDER_IN
 
-URDF_NAMES = ['Rev_Arm', 'Rev_Pendulum']
-MCU_NAMES  = ['joint_base_to_arm', 'joint_arm_to_pendulum']
 
 class VelocityHUD(Node):
     def __init__(self):
@@ -22,8 +21,11 @@ class VelocityHUD(Node):
         self.offx, self.offy, self.offz = map(float, off)
         self.colr, self.colg, self.colb, self.cola = map(float, col)
 
-        self.meas_vel = {URDF_NAMES[0]: 0.0, URDF_NAMES[1]: 0.0}
-        self.theo_vel = {URDF_NAMES[0]: 0.0, URDF_NAMES[1]: 0.0}
+        self.urdf_names = [NAME_MAP[k] for k in ORDER_IN]
+        self.mcu_names = ORDER_IN
+        
+        self.meas_vel = {self.urdf_names[0]: 0.0, self.urdf_names[1]: 0.0}
+        self.theo_vel = {self.urdf_names[0]: 0.0, self.urdf_names[1]: 0.0}
 
         self.pub = self.create_publisher(Marker, "rip_hud", 10)
         self.sub_meas = self.create_subscription(JointState, "joint_states", self.cb_meas, 10)
@@ -35,33 +37,28 @@ class VelocityHUD(Node):
     def cb_meas(self, msg: JointState):
 
         name2vel = dict(zip(msg.name, msg.velocity)) if len(msg.velocity) == len(msg.name) else {}
-        for key in URDF_NAMES + MCU_NAMES:
-            if key in name2vel:
-                if key in URDF_NAMES:
-                    self.meas_vel[key] = name2vel[key]
-                elif key == MCU_NAMES[0]:
-                    self.meas_vel[URDF_NAMES[0]] = name2vel[key]
-                elif key == MCU_NAMES[1]:
-                    self.meas_vel[URDF_NAMES[1]] = name2vel[key]
+        for i, (urdf_name, mcu_name) in enumerate(zip(self.urdf_names, self.mcu_names)):
+            if urdf_name in name2vel:
+                self.meas_vel[urdf_name] = name2vel[urdf_name]
+            elif mcu_name in name2vel:
+                self.meas_vel[urdf_name] = name2vel[mcu_name]
 
     def cb_theo(self, msg: JointState):
 
         name2vel = dict(zip(msg.name, msg.velocity)) if len(msg.velocity) == len(msg.name) else {}
-        for key in URDF_NAMES + MCU_NAMES:
-            if key in name2vel:
-                if key in URDF_NAMES:
-                    self.theo_vel[key] = name2vel[key]
-                elif key == MCU_NAMES[0]:
-                    self.theo_vel[URDF_NAMES[0]] = name2vel[key]
-                elif key == MCU_NAMES[1]:
-                    self.theo_vel[URDF_NAMES[1]] = name2vel[key]
+        for i, (urdf_name, mcu_name) in enumerate(zip(self.urdf_names, self.mcu_names)):
+            if urdf_name in name2vel:
+                self.theo_vel[urdf_name] = name2vel[urdf_name]
+            elif mcu_name in name2vel:
+                self.theo_vel[urdf_name] = name2vel[mcu_name]
 
     def update_display(self):
 
-        arm_m = self.meas_vel[URDF_NAMES[0]]
-        pend_m = self.meas_vel[URDF_NAMES[1]]
-        arm_t = self.theo_vel[URDF_NAMES[0]]
-        pend_t = self.theo_vel[URDF_NAMES[1]]
+        arm_m = self.meas_vel[self.urdf_names[0]]
+        pend_m = self.meas_vel[self.urdf_names[1]]
+        arm_t = self.theo_vel[self.urdf_names[0]]
+        pend_t = self.theo_vel[self.urdf_names[1]]
+
 
         text = (
             f"Arm velocity meas: {arm_m:+.3f} rad/s\n"

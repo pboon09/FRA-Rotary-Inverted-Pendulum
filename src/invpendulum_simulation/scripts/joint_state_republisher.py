@@ -3,13 +3,8 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Header
+from invpendulum_simulation.joint_name_config import NAME_MAP, ORDER_IN
 
-# Map micro-ROS names -> URDF joint names
-NAME_MAP = {
-    'joint_base_to_arm': 'Rev_Arm',
-    'joint_arm_to_pendulum': 'Rev_Pendulum',
-}
-ORDER_IN = ['joint_base_to_arm', 'joint_arm_to_pendulum']  # expected incoming order
 
 class JointStateRepublisher(Node):
     def __init__(self):
