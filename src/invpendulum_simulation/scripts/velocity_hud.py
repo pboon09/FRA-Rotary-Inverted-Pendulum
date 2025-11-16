@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import JointState
 from invpendulum_simulation.joint_name_config import NAME_MAP, ORDER_IN
 
@@ -27,15 +27,17 @@ class VelocityHUD(Node):
         self.meas_vel = {self.urdf_names[0]: 0.0, self.urdf_names[1]: 0.0}
         self.theo_vel = {self.urdf_names[0]: 0.0, self.urdf_names[1]: 0.0}
 
+        # Publishers
         self.pub = self.create_publisher(Marker, "rip_hud", 10)
+        self.marker_pub = self.create_publisher(MarkerArray, "frame_markers", 10)
+        
+        # Subscriptions
         self.sub_meas = self.create_subscription(JointState, "joint_states", self.cb_meas, 10)
         self.sub_theo = self.create_subscription(JointState, "joint_states_theory", self.cb_theo, 10)
 
         self.create_timer(0.05, self.update_display)
 
-
     def cb_meas(self, msg: JointState):
-
         name2vel = dict(zip(msg.name, msg.velocity)) if len(msg.velocity) == len(msg.name) else {}
         for i, (urdf_name, mcu_name) in enumerate(zip(self.urdf_names, self.mcu_names)):
             if urdf_name in name2vel:
@@ -44,7 +46,6 @@ class VelocityHUD(Node):
                 self.meas_vel[urdf_name] = name2vel[mcu_name]
 
     def cb_theo(self, msg: JointState):
-
         name2vel = dict(zip(msg.name, msg.velocity)) if len(msg.velocity) == len(msg.name) else {}
         for i, (urdf_name, mcu_name) in enumerate(zip(self.urdf_names, self.mcu_names)):
             if urdf_name in name2vel:
@@ -52,13 +53,40 @@ class VelocityHUD(Node):
             elif mcu_name in name2vel:
                 self.theo_vel[urdf_name] = name2vel[mcu_name]
 
-    def update_display(self):
+    def create_sphere_marker(self, frame_id, r, g, b, marker_id):
 
+        m = Marker()
+        m.header.frame_id = frame_id
+
+        from builtin_interfaces.msg import Time
+        m.header.stamp = Time()  # Default is 0
+        m.ns = "frame_spheres"
+        m.id = marker_id
+        m.type = Marker.SPHERE
+        m.action = Marker.ADD
+        
+        m.pose.position.x = 0.0
+        m.pose.position.y = 0.0
+        m.pose.position.z = 0.0
+        m.pose.orientation.w = 1.0
+        
+        m.scale.x = 0.05
+        m.scale.y = 0.05
+        m.scale.z = 0.05
+        
+        m.color.r = r
+        m.color.g = g
+        m.color.b = b
+        m.color.a = 0.4
+        
+        m.lifetime.sec = 0
+        return m
+
+    def update_display(self):
         arm_m = self.meas_vel[self.urdf_names[0]]
         pend_m = self.meas_vel[self.urdf_names[1]]
         arm_t = self.theo_vel[self.urdf_names[0]]
         pend_t = self.theo_vel[self.urdf_names[1]]
-
 
         text = (
             f"Arm velocity meas: {arm_m:+.3f} rad/s\n"
@@ -67,6 +95,7 @@ class VelocityHUD(Node):
             f"Pendulum velocity theory: {pend_t:+.3f} rad/s"
         )
 
+        # Text HUD
         m = Marker()
         m.header.frame_id = self.frame_id
         m.header.stamp = self.get_clock().now().to_msg()
@@ -80,17 +109,36 @@ class VelocityHUD(Node):
         m.pose.position.z = self.offz
         m.pose.orientation.w = 1.0
 
-        # Compact text scaling
         m.scale.z = self.text_h
         m.scale.x = self.text_h * 0.6
         m.scale.y = 0.01
 
-        # Color
         m.color.r, m.color.g, m.color.b, m.color.a = self.colr, self.colg, self.colb, self.cola
         m.text = text
         m.lifetime.sec = 0
 
         self.pub.publish(m)
+
+        # Frame markers
+        marker_array = MarkerArray()
+        
+        # Theory frames - GREEN
+        marker_array.markers.append(
+            self.create_sphere_marker('Arm_Link_theory', 0.5, 0.0, 1.0, 1)
+        )
+        marker_array.markers.append(
+            self.create_sphere_marker('Pendulum_Link_theory', 0.5, 0.0, 1.0, 2)
+        )
+        
+        # URDF frames - CYAN
+        marker_array.markers.append(
+            self.create_sphere_marker('Arm_Link', 1.0, 1.0, 0.0, 3)
+        )
+        marker_array.markers.append(
+            self.create_sphere_marker('Pendulum_Link', 1.0, 1.0, 0.0, 4)
+        )
+        
+        self.marker_pub.publish(marker_array)
 
 
 def main():

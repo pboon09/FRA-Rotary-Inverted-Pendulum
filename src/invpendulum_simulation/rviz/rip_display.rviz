@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /RobotModel1
         - /TF1
+        - /MarkerArray1
       Splitter Ratio: 0.5
     Tree Height: 617
   - Class: rviz_common/Selection
@@ -57,7 +58,7 @@ Visualization Manager:
       Enabled: true
       Links:
         All Links Enabled: true
-        Arm_Link1:
+        Arm_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -66,7 +67,7 @@ Visualization Manager:
         Expand Link Details: false
         Expand Tree: false
         Link Tree Style: Links in Alphabetic Order
-        Pendulum_Link2:
+        Pendulum_Link:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -86,18 +87,18 @@ Visualization Manager:
       Visual Enabled: true
     - Class: rviz_default_plugins/TF
       Enabled: true
-      Frame Timeout: 15
+      Frame Timeout: 1000
       Frames:
         All Enabled: true
-        Arm_Link1:
+        Arm_Link:
           Value: true
-        Pendulum_Link2:
+        Arm_Link_theory:
           Value: true
-        arm_link1:
+        Pendulum_Link:
+          Value: true
+        Pendulum_Link_theory:
           Value: true
         base_link:
-          Value: true
-        pendulum_link2:
           Value: true
         world:
           Value: true
@@ -109,12 +110,12 @@ Visualization Manager:
       Tree:
         world:
           base_link:
-            Arm_Link1:
-              Pendulum_Link2:
+            Arm_Link:
+              Pendulum_Link:
                 {}
-            arm_link1:
+            Arm_Link_theory:
               {}
-            pendulum_link2:
+            Pendulum_Link_theory:
               {}
       Update Interval: 0
       Value: true
@@ -130,6 +131,18 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /rip_hud
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        frame_spheres: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /frame_markers
       Value: true
   Enabled: true
   Global Options:
