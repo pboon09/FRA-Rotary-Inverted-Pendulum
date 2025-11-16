@@ -32,7 +32,7 @@
   </link>
 
   <!-- Arm Link -->
-  <link name="Arm_Link1">
+  <link name="Arm_Link">
     <inertial>
       <origin xyz="0.0191189780582279 -2.13351893908753e-06 0.0126487945771829" rpy="0 0 0"/>
       <mass value="0.215027242047406"/>
@@ -47,7 +47,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://invpendulum_description/meshes/Arm_Link1.STL"/>
+        <mesh filename="package://invpendulum_description/meshes/Arm_Link.STL"/>
       </geometry>
       <material name="white">
         <color rgba="1 1 1 1"/>
@@ -56,7 +56,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://invpendulum_description/meshes/Arm_Link1.STL"/>
+        <mesh filename="package://invpendulum_description/meshes/Arm_Link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -65,12 +65,12 @@
   <joint name="Rev_Arm" type="continuous">
     <origin xyz="0.0002 0 0.212" rpy="0 0 0"/>
     <parent link="base_link"/>
-    <child link="Arm_Link1"/>
+    <child link="Arm_Link"/>
     <axis xyz="0 0 1"/>
   </joint>
 
   <!-- Pendulum Link -->
-  <link name="Pendulum_Link2">
+  <link name="Pendulum_Link">
     <inertial>
       <origin xyz="0.038074 3.9254e-10 0.0081922" rpy="0 0 0"/>
       <mass value="0.011664"/>
@@ -85,7 +85,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://invpendulum_description/meshes/Pendulum_Link2.STL"/>
+        <mesh filename="package://invpendulum_description/meshes/Pendulum_Link.STL"/>
       </geometry>
       <material name="lightblue">
         <color rgba="0.79216 0.81961 0.93333 1"/>
@@ -94,7 +94,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <mesh filename="package://invpendulum_description/meshes/Pendulum_Link2.STL"/>
+        <mesh filename="package://invpendulum_description/meshes/Pendulum_Link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -102,8 +102,8 @@
   <!-- Joint between arm and pendulum -->
   <joint name="Rev_Pendulum" type="continuous">
     <origin xyz="0.1215 0 0.0255" rpy="0 ${pi/2} 0"/>
-    <parent link="Arm_Link1"/>
-    <child link="Pendulum_Link2"/>
+    <parent link="Arm_Link"/>
+    <child link="Pendulum_Link"/>
     <axis xyz="0 0 1"/>
   </joint>
 

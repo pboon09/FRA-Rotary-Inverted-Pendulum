@@ -10,6 +10,7 @@ from tf2_ros import TransformBroadcaster
 from roboticstoolbox import DHRobot, RevoluteMDH
 from spatialmath import SE3
 from invpendulum_simulation.joint_name_config import NAME_MAP, ORDER_IN
+from scipy.spatial.transform import Rotation as R
 
 
 class TheoryJointPublisher(Node):
@@ -23,10 +24,26 @@ class TheoryJointPublisher(Node):
         # Subscription
         self.create_subscription(JointState, "joint_states_raw", self.js_raw_callback, 10)
         
+        # Physical parameters FROM URDF (m)
+        # Rev_Arm joint origin in base_link
+        self.arm_joint_x = 0.0002
+        self.arm_joint_y = 0.0
+        self.arm_joint_z = 0.212
+        
+        # Rev_Pendulum joint origin in Arm_Link1 frame
+        self.pend_joint_x_local = 0.1215
+        self.pend_joint_y_local = 0.0
+        self.pend_joint_z_local = 0.0255
+        
         # Physical parameters (m)
         self.L1 = 240.40e-3
         self.L2 = 255.46e-3
         self.L0 = 64e-3
+        
+        self.q1 = 0.0
+        self.q2 = 0.0
+        self.dq1 = 0.0
+        self.dq2 = 0.0
 
         # DH model for Jacobian
         link01 = RevoluteMDH(a=0, alpha=0, d=self.L0, offset=0)
@@ -43,121 +60,93 @@ class TheoryJointPublisher(Node):
         self.get_logger().info("Theoretical Joint + TF publisher started.")
         
     def js_raw_callback(self, msg: JointState):
-
+        
         name2pos = dict(zip(msg.name, msg.position))
         name2vel = dict(zip(msg.name, msg.velocity)) if msg.velocity else {}
         
-        q1 = name2pos.get(ORDER_IN[0], 0.0)
-        q2 = name2pos.get(ORDER_IN[1], 0.0)
-        dq1 = name2vel.get(ORDER_IN[0], 0.0)
-        dq2 = name2vel.get(ORDER_IN[1], 0.0)
-        
-        L1, L2 = self.L1, self.L2
-        
-        x1 = L1 * math.cos(q1)
-        y1 = L1 * math.sin(q1)
-        z1 = 0.0
-        
-        x2 = L1 * math.cos(q1) - L2 * math.sin(q2) * math.sin(q1)
-        y2 = L1 * math.sin(q1) + L2 * math.sin(q2) * math.cos(q1)
-        z2 = L2 * math.cos(q2)
-        
-        # Optional: Calculate Jacobian and end-effector velocity
-        q = np.array([q1, 0.0, q2])
-        dq = np.array([dq1, 0.0, dq2])
-        J = self.robot.jacob0(q)
-        J_actual = J[:, [0, 2]]
-        v_ee = J_actual[:3, :] @ np.array([[dq1], [dq2]])
-        w_ee = J_actual[3:, :] @ np.array([[dq1], [dq2]])
-        
-        # Publish TF transforms for ACTUAL robot (from micro-ROS data)
-        t_now = self.get_clock().now().to_msg()
-        
-        tf1 = TransformStamped()
-        tf1.header.stamp = t_now
-        tf1.header.frame_id = 'base_link'
-        tf1.child_frame_id = 'arm_link1_actual'
-        tf1.transform.translation.x = float(x1)
-        tf1.transform.translation.y = float(y1)
-        tf1.transform.translation.z = float(z1)
-        tf1.transform.rotation.w = 1.0
-        
-        tf2 = TransformStamped()
-        tf2.header.stamp = t_now
-        tf2.header.frame_id = 'base_link'
-        tf2.child_frame_id = 'pendulum_link2_actual'
-        tf2.transform.translation.x = float(x2)
-        tf2.transform.translation.y = float(y2)
-        tf2.transform.translation.z = float(z2)
-        tf2.transform.rotation.w = 1.0
-        
-        self.tf_pub.sendTransform([tf1, tf2])
-        
-        self.get_logger().debug(
-            f"Actual FK: q1={q1:+.3f} q2={q2:+.3f} | "
-            f"Link1({x1:.3f},{y1:.3f},{z1:.3f}) Link2({x2:.3f},{y2:.3f},{z2:.3f})"
-        )
-        
-        
+        self.q1 = name2pos.get(ORDER_IN[0], 0.0)
+        self.q2 = name2pos.get(ORDER_IN[1], 0.0)
+        self.dq1 = name2vel.get(ORDER_IN[0], 0.0)
+        self.dq2 = name2vel.get(ORDER_IN[1], 0.0)
 
     def update(self):
+        # FK based on URDF joint origins
+        
+        # Arm_Link1 frame: at Rev_Arm joint origin
+        x1 = self.arm_joint_x
+        y1 = self.arm_joint_y
+        z1 = self.arm_joint_z
+        
+        # Arm_Link1 rotation: rotate q1 about Z axis
+        rot_arm = R.from_euler('z', self.q1)
+        quat_arm = rot_arm.as_quat()
+        
+        # Pendulum_Link2 frame: at Rev_Pendulum joint origin
+        # Transform from Arm_Link1 frame to base_link frame
+        x2 = self.arm_joint_x + (self.pend_joint_x_local * math.cos(self.q1) - 
+                                   self.pend_joint_y_local * math.sin(self.q1))
+        y2 = self.arm_joint_y + (self.pend_joint_x_local * math.sin(self.q1) + 
+                                   self.pend_joint_y_local * math.cos(self.q1))
+        z2 = self.arm_joint_z + self.pend_joint_z_local
+        
+        # Pendulum_Link2 rotation: 
+        # 1. Rotate q1 about base Z (arm rotation)
+        # 2. Rotate 90° about Y (from URDF rpy="0 1.5708 0")
+        # 3. Rotate q2 about the pendulum axis (Z in pendulum frame)
+        rot_pend = R.from_euler('zyz', [self.q1, np.pi/2, self.q2])
+        quat_pend = rot_pend.as_quat()  # [x, y, z, w]
 
-        q1 = 0.5 * math.sin(0.5 * self.t)
-        q2 = 0.2 * math.cos(1.0 * self.t)
-        dq1 = 0.25 * math.cos(0.5 * self.t)
-        dq2 = -0.2 * math.sin(1.0 * self.t)
-
-        L1, L2 = self.L1, self.L2
-        x1 = L1 * math.cos(q1)
-        y1 = L1 * math.sin(q1)
-        z1 = 0.0
-
-        x2 = L1 * math.cos(q1) - L2 * math.sin(q2) * math.sin(q1)
-        y2 = L1 * math.sin(q1) + L2 * math.sin(q2) * math.cos(q1)
-        z2 = L2 * math.cos(q2)
-
-        q = np.array([q1, 0.0, q2])
-        dq = np.array([dq1, 0.0, dq2])
+        # Jacobian calculation (using DH model)
+        q = np.array([self.q1, 0.0, self.q2])
+        dq = np.array([self.dq1, 0.0, self.dq2])
+        
         J = self.robot.jacob0(q)
         J_actual = J[:, [0, 2]]
-        v_ee = J_actual[:3, :] @ np.array([[dq1], [dq2]])
-        w_ee = J_actual[3:, :] @ np.array([[dq1], [dq2]])
+        v_ee = J_actual[:3, :] @ np.array([[self.dq1], [self.dq2]])
+        w_ee = J_actual[3:, :] @ np.array([[self.dq1], [self.dq2]])
 
+        # Publish joint states
         js = JointState()
         js.header = Header()
         js.header.stamp = self.get_clock().now().to_msg()
         js.name = [NAME_MAP[k] for k in ORDER_IN]
-        js.position = [float(q1), float(q2)]
-        js.velocity = [float(dq1), float(dq2)]
+        js.position = [float(self.q1), float(self.q2)]
+        js.velocity = [float(self.dq1), float(self.dq2)]
         js.effort = []
         self.js_pub.publish(js)
 
+        # Publish TF transforms
         t_now = self.get_clock().now().to_msg()
 
         tf1 = TransformStamped()
         tf1.header.stamp = t_now
         tf1.header.frame_id = 'base_link'
-        tf1.child_frame_id = 'arm_link1'
+        tf1.child_frame_id = 'Arm_Link_theory'
         tf1.transform.translation.x = float(x1)
         tf1.transform.translation.y = float(y1)
         tf1.transform.translation.z = float(z1)
-        tf1.transform.rotation.w = 1.0
+        tf1.transform.rotation.x = float(quat_arm[0])
+        tf1.transform.rotation.y = float(quat_arm[1])
+        tf1.transform.rotation.z = float(quat_arm[2])
+        tf1.transform.rotation.w = float(quat_arm[3])
 
         tf2 = TransformStamped()
         tf2.header.stamp = t_now
         tf2.header.frame_id = 'base_link'
-        tf2.child_frame_id = 'pendulum_link2'
+        tf2.child_frame_id = 'Pendulum_Link_theory'
         tf2.transform.translation.x = float(x2)
         tf2.transform.translation.y = float(y2)
         tf2.transform.translation.z = float(z2)
-        tf2.transform.rotation.w = 1.0
+        tf2.transform.rotation.x = float(quat_pend[0])
+        tf2.transform.rotation.y = float(quat_pend[1])
+        tf2.transform.rotation.z = float(quat_pend[2])
+        tf2.transform.rotation.w = float(quat_pend[3])
 
         self.tf_pub.sendTransform([tf1, tf2])
 
-        # optional debug
         self.get_logger().debug(
-            f"t={self.t:.2f}  q1={q1:+.3f}  q2={q2:+.3f} | "
-            f"Link1({x1:.3f},{y1:.3f},{z1:.3f})  Link2({x2:.3f},{y2:.3f},{z2:.3f})"
+            f"q1={self.q1:+.3f} q2={self.q2:+.3f} | "
+            f"Arm({x1:.4f},{y1:.4f},{z1:.4f}) Pend({x2:.4f},{y2:.4f},{z2:.4f})"
         )
 
         self.t += self.dt
