@@ -73,8 +73,8 @@ def generate_launch_description():
         name='velocity_hud',
         output='screen',
         parameters=[{
-            'text_height': 0.05,
-            'offset_xyz': [0.0, 0.0, 0.5],
+            'text_height': 0.03,
+            'offset_xyz': [0.0, 0.0, 0.4],
             'color_rgba': [1.0, 1.0, 1.0, 1.0],
             'use_sim_time': use_sim_time,
         }]

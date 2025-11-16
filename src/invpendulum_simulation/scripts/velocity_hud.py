@@ -10,8 +10,8 @@ class VelocityHUD(Node):
     def __init__(self):
         super().__init__('velocity_hud')
 
-        self.declare_parameter('text_height', 0.05)
-        self.declare_parameter('offset_xyz', [0.0, 0.0, 0.5])
+        self.declare_parameter('text_height', 0.03)
+        self.declare_parameter('offset_xyz', [0.0, 0.0, 0.4])
         self.declare_parameter('color_rgba', [1.0, 1.0, 1.0, 1.0])  # white
 
         self.frame_id = 'base_link'
@@ -124,18 +124,18 @@ class VelocityHUD(Node):
         
         # Theory frames - GREEN
         marker_array.markers.append(
-            self.create_sphere_marker('Arm_Link_theory', 0.5, 0.0, 1.0, 1)
+            self.create_sphere_marker('arm_link_theory', 0.5, 0.0, 1.0, 1)
         )
         marker_array.markers.append(
-            self.create_sphere_marker('Pendulum_Link_theory', 0.5, 0.0, 1.0, 2)
+            self.create_sphere_marker('pendulum_link_theory', 0.5, 0.0, 1.0, 2)
         )
         
         # URDF frames - CYAN
         marker_array.markers.append(
-            self.create_sphere_marker('Arm_Link', 1.0, 1.0, 0.0, 3)
+            self.create_sphere_marker('arm_link', 1.0, 1.0, 0.0, 3)
         )
         marker_array.markers.append(
-            self.create_sphere_marker('Pendulum_Link', 1.0, 1.0, 0.0, 4)
+            self.create_sphere_marker('pendulum_link', 1.0, 1.0, 0.0, 4)
         )
         
         self.marker_pub.publish(marker_array)

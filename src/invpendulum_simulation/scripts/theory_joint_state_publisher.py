@@ -93,7 +93,7 @@ class TheoryJointPublisher(Node):
         # 1. Rotate q1 about base Z (arm rotation)
         # 2. Rotate 90° about Y (from URDF rpy="0 1.5708 0")
         # 3. Rotate q2 about the pendulum axis (Z in pendulum frame)
-        rot_pend = R.from_euler('zyz', [self.q1, np.pi/2, self.q2])
+        rot_pend = R.from_euler('ZYZ', [self.q1, np.pi/2, self.q2])
         quat_pend = rot_pend.as_quat()  # [x, y, z, w]
 
         # Jacobian calculation (using DH model)
@@ -121,7 +121,7 @@ class TheoryJointPublisher(Node):
         tf1 = TransformStamped()
         tf1.header.stamp = t_now
         tf1.header.frame_id = 'base_link'
-        tf1.child_frame_id = 'Arm_Link_theory'
+        tf1.child_frame_id = 'arm_link_theory'
         tf1.transform.translation.x = float(x1)
         tf1.transform.translation.y = float(y1)
         tf1.transform.translation.z = float(z1)
@@ -133,7 +133,7 @@ class TheoryJointPublisher(Node):
         tf2 = TransformStamped()
         tf2.header.stamp = t_now
         tf2.header.frame_id = 'base_link'
-        tf2.child_frame_id = 'Pendulum_Link_theory'
+        tf2.child_frame_id = 'pendulum_link_theory'
         tf2.transform.translation.x = float(x2)
         tf2.transform.translation.y = float(y2)
         tf2.transform.translation.z = float(z2)

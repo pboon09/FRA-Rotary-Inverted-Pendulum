@@ -40,6 +40,8 @@
 #include <sensor_msgs/msg/joint_state.h>
 #include <rosidl_runtime_c/string_functions.h>
 #include <rosidl_runtime_c/primitives_sequence_functions.h>
+
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -127,10 +129,10 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
         }
 
         // Update joint states
-        joint_msg.position.data[0] = alpha_shifted;
-        joint_msg.velocity.data[0] = alpha_dot;
-        joint_msg.position.data[1] = theta;
-        joint_msg.velocity.data[1] = theta_dot;
+        joint_msg.position.data[0] = theta;
+        joint_msg.velocity.data[0] = theta_dot;
+        joint_msg.position.data[1] = alpha;
+        joint_msg.velocity.data[1] = alpha_dot;
 
         // Publish the joint state
         RCLSOFTCHECK(rcl_publish(&publisher, &joint_msg, NULL));
@@ -349,7 +351,87 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+	if (htim == &htim2) {
+		QEI_get_diff_count(&motor_encoder);
+		QEI_compute_data(&motor_encoder);
+		QEI_get_diff_count(&pendulum_encoder);
+		QEI_compute_data(&pendulum_encoder);
 
+		alpha = wrap_2pi(pendulum_encoder.rads);
+		alpha_dot = FIR_process(&alpha_dot_filter, pendulum_encoder.radps);
+		theta = motor_encoder.rads;
+		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
+
+		alpha_shifted = wrap_pi(alpha - M_PI);
+
+		switch (state) {
+		case STATE_WAIT_BUTTON:
+			if (++led_counter >= 100) {
+				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+				led_counter = 0;
+			}
+			if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
+				kick_counter = 0;
+				state = STATE_KICK;
+				QEI_reset(&pendulum_encoder);
+				QEI_reset(&motor_encoder);
+				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+			}
+
+			MDXX_set_range(&motor, 2000, 0);
+			break;
+		case STATE_KICK:
+			kick_counter++;
+			if (kick_counter < 500) {
+				MDXX_set_range(&motor, 2000,
+						(kick_counter < 250) ? 6000 : -6000);
+			} else {
+				state = STATE_SWINGUP;
+			}
+			break;
+		case STATE_SWINGUP:
+			if (fabsf(alpha_shifted) < 0.25f) {
+				state = STATE_LQR;
+			} else {
+				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
+				cmd_energy = (int) (cmd_energy_norm * 6000.0f);
+				MDXX_set_range(&motor, 2000, cmd_energy);
+			}
+			break;
+		case STATE_LQR:
+			if (fabsf(alpha_shifted) > 0.5f) {
+				state = STATE_WAIT_BUTTON;
+				MDXX_set_range(&motor, 2000, 0);
+			} else {
+				LQR_SetState(&lqr_ctrl, theta, alpha_shifted, theta_dot,
+						alpha_dot);
+				cmd_lqr_volt = LQR_Update(&lqr_ctrl);
+				cmd_lqr = (int) (cmd_lqr_volt * 65535.0f / MOTOR_VOLTAGE_LIMIT);
+				MDXX_set_range(&motor, 2000, cmd_lqr);
+			}
+			break;
+		case STATE_EMERGENCY:
+			MDXX_set_range(&motor, 2000, 0);
+			QEI_reset(&motor_encoder);
+			QEI_reset(&pendulum_encoder);
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+			static uint8_t released = 0;
+
+			if (HAL_GPIO_ReadPin(emergency_GPIO_Port, emergency_Pin) == 0) {
+				released = 1;
+			}
+
+			if (released
+					&& HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
+				state = STATE_WAIT_BUTTON;
+				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+				led_counter = 0;
+				released = 0;
+				debug = 0;
+			}
+			break;
+		}
+	}
   /* USER CODE END Callback 1 */
 }
 
