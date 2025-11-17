@@ -8,7 +8,6 @@ Panels:
         - /RobotModel1
         - /TF1
         - /MarkerArray1
-        - /MarkerArray1/Status1
         - /MarkerArray1/Namespaces1
       Splitter Ratio: 0.5
     Tree Height: 787
@@ -96,7 +95,9 @@ Visualization Manager:
           Value: true
         arm_link_theory:
           Value: true
-        Pendulum_Link_theory:
+        base_link:
+          Value: true
+        end_effector:
           Value: true
         pendulum_link:
           Value: true
@@ -106,9 +107,9 @@ Visualization Manager:
           Value: true
       Marker Scale: 0.30000001192092896
       Name: TF
-      Show Arrows: true
+      Show Arrows: false
       Show Axes: true
-      Show Names: true
+      Show Names: false
       Tree:
         world:
           base_link:
@@ -118,7 +119,8 @@ Visualization Manager:
             arm_link_theory:
               {}
             pendulum_link_theory:
-              {}
+              end_effector:
+                {}
       Update Interval: 0
       Value: true
     - Class: rviz_default_plugins/Marker
@@ -207,10 +209,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.1450004279613495
+      Pitch: 0.5300002098083496
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 0.5400006771087646
+      Yaw: 0.8200006484985352
     Saved: ~
 Window Geometry:
   Displays:

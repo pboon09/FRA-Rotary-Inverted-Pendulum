@@ -4,7 +4,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Float32
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformBroadcaster
 from roboticstoolbox import DHRobot, RevoluteMDH
@@ -19,6 +19,7 @@ class TheoryJointPublisher(Node):
 
         # Publishers
         self.js_pub = self.create_publisher(JointState, 'joint_states_theory', 10)
+        self.ee_pub = self.create_publisher(Float32, 'end_effector_theory', 10)
         self.tf_pub = TransformBroadcaster(self)
         
         # Subscription
@@ -37,7 +38,7 @@ class TheoryJointPublisher(Node):
         
         # Physical parameters (m)
         self.L1 = 240.40e-3
-        self.L2 = 255.46e-3
+        self.L2 = 135e-3
         self.L0 = 64e-3
         
         self.q1 = 0.0
@@ -104,6 +105,7 @@ class TheoryJointPublisher(Node):
         J_actual = J[:, [0, 2]]
         v_ee = J_actual[:3, :] @ np.array([[self.dq1], [self.dq2]])
         w_ee = J_actual[3:, :] @ np.array([[self.dq1], [self.dq2]])
+        v_ee_mag = np.sqrt(v_ee[0]**2 + v_ee[1]**2 + v_ee[2]**2)
 
         # Publish joint states
         js = JointState()
@@ -114,6 +116,10 @@ class TheoryJointPublisher(Node):
         js.velocity = [float(self.dq1), float(self.dq2)]
         js.effort = []
         self.js_pub.publish(js)
+
+        ee = Float32()
+        ee.data = float(v_ee_mag)
+        self.ee_pub.publish(ee)
 
         # Publish TF transforms
         t_now = self.get_clock().now().to_msg()
@@ -142,14 +148,22 @@ class TheoryJointPublisher(Node):
         tf2.transform.rotation.z = float(quat_pend[2])
         tf2.transform.rotation.w = float(quat_pend[3])
 
-        self.tf_pub.sendTransform([tf1, tf2])
+        tf3 = TransformStamped()
+        tf3.header.stamp = t_now
+        tf3.header.frame_id = 'pendulum_link_theory'
+        tf3.child_frame_id = 'end_effector'
+        tf3.transform.translation.x = float(self.L2)
+        tf3.transform.translation.y = float(0.0)
+        tf3.transform.translation.z = float(11.5e-3)
+        tf3.transform.rotation.x = float(0.0)
+        tf3.transform.rotation.y = float(0.0)
+        tf3.transform.rotation.z = float(0.0)
+        tf3.transform.rotation.w = float(1.0)
 
-        self.get_logger().debug(
-            f"q1={self.q1:+.3f} q2={self.q2:+.3f} | "
-            f"Arm({x1:.4f},{y1:.4f},{z1:.4f}) Pend({x2:.4f},{y2:.4f},{z2:.4f})"
-        )
+        self.tf_pub.sendTransform([tf1, tf2, tf3])
 
         self.t += self.dt
+
 
 
 def main():

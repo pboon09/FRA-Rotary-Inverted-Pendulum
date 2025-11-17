@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from visualization_msgs.msg import Marker, MarkerArray
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Float32
 from invpendulum_simulation.joint_name_config import NAME_MAP, ORDER_IN
 
 
@@ -11,7 +12,7 @@ class VelocityHUD(Node):
         super().__init__('velocity_hud')
 
         self.declare_parameter('text_height', 0.03)
-        self.declare_parameter('offset_xyz', [0.0, 0.0, 0.4])
+        self.declare_parameter('offset_xyz', [0.0, 0.0, 0.5])
         self.declare_parameter('color_rgba', [1.0, 1.0, 1.0, 1.0])  # white
 
         self.frame_id = 'base_link'
@@ -26,6 +27,7 @@ class VelocityHUD(Node):
         
         self.meas_vel = {self.urdf_names[0]: 0.0, self.urdf_names[1]: 0.0}
         self.theo_vel = {self.urdf_names[0]: 0.0, self.urdf_names[1]: 0.0}
+        self.ee = 0.0
 
         # Publishers
         self.pub = self.create_publisher(Marker, "rip_hud", 10)
@@ -34,6 +36,7 @@ class VelocityHUD(Node):
         # Subscriptions
         self.sub_meas = self.create_subscription(JointState, "joint_states", self.cb_meas, 10)
         self.sub_theo = self.create_subscription(JointState, "joint_states_theory", self.cb_theo, 10)
+        self.sub_ee = self.create_subscription(JointState, "end_effector_theory", self.cb_ee, 10)
 
         self.create_timer(0.05, self.update_display)
 
@@ -52,6 +55,9 @@ class VelocityHUD(Node):
                 self.theo_vel[urdf_name] = name2vel[urdf_name]
             elif mcu_name in name2vel:
                 self.theo_vel[urdf_name] = name2vel[mcu_name]
+
+    def cb_ee(self, msg: Float32):
+        self.ee = msg.data
 
     def create_sphere_marker(self, frame_id, r, g, b, marker_id):
 
@@ -92,7 +98,8 @@ class VelocityHUD(Node):
             f"Arm velocity meas: {arm_m:+.3f} rad/s\n"
             f"Pendulum velocity meas: {pend_m:+.3f} rad/s\n"
             f"Arm velocity theory: {arm_t:+.3f} rad/s\n"
-            f"Pendulum velocity theory: {pend_t:+.3f} rad/s"
+            f"Pendulum velocity theory: {pend_t:+.3f} rad/s\n"
+            f"End effector velocity: {self.ee:+.3f} m/s"
         )
 
         # Text HUD
