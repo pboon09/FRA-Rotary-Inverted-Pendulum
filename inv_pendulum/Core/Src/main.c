@@ -46,9 +46,9 @@
 
 /* USER CODE BEGIN PV */
 float cmd_energy_norm, cmd_lqr_volt;
-int cmd_energy, cmd_lqr;
+int total_cmd, cmd_energy, cmd_lqr, cmd_kick;
 
-float alpha, alpha_shifted, alpha_dot, theta, theta_dot;
+float alpha, alpha_shifted, alpha_dot, theta, theta_dot, voltage_input;
 
 typedef enum {
 	STATE_WAIT_BUTTON, STATE_KICK, STATE_SWINGUP, STATE_LQR, STATE_EMERGENCY
@@ -57,7 +57,7 @@ typedef enum {
 PendulumState state = STATE_WAIT_BUTTON;
 int kick_counter = 0;
 
-int debug, emer, led_counter = 0;
+int debug, emer, released, led_counter = 0;
 
 /* USER CODE END PV */
 
@@ -191,15 +191,25 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		QEI_get_diff_count(&pendulum_encoder);
 		QEI_compute_data(&pendulum_encoder);
 
+		total_cmd = cmd_lqr + cmd_energy + cmd_kick;
+
+		voltage_input = total_cmd * MOTOR_VOLTAGE_LIMIT / 65535.0;
+
 		alpha = wrap_2pi(pendulum_encoder.rads);
 		alpha_dot = FIR_process(&alpha_dot_filter, pendulum_encoder.radps);
 		theta = motor_encoder.rads;
-		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
+//		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
+		theta_dot = kf_update(&motor_filter, voltage_input, theta);
 
 		alpha_shifted = wrap_pi(alpha - M_PI);
 
 		switch (state) {
 		case STATE_WAIT_BUTTON:
+			if (emer) {
+				state = STATE_EMERGENCY;
+			}
+
+			cmd_lqr = 0;
 			if (++led_counter >= 100) {
 				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 				led_counter = 0;
@@ -209,6 +219,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 				state = STATE_KICK;
 				QEI_reset(&pendulum_encoder);
 				QEI_reset(&motor_encoder);
+				kf_clear(&motor_filter);
+				total_cmd = 0;
 				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 			}
 
@@ -216,15 +228,19 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			break;
 		case STATE_KICK:
 			kick_counter++;
+			cmd_kick = (kick_counter < 250) ? 6000 : -6000;
+
 			if (kick_counter < 500) {
-				MDXX_set_range(&motor, 2000,
-						(kick_counter < 250) ? 6000 : -6000);
+				MDXX_set_range(&motor, 2000, cmd_kick);
 			} else {
+				cmd_kick = 0;
 				state = STATE_SWINGUP;
 			}
 			break;
 		case STATE_SWINGUP:
-			if (fabsf(alpha_shifted) < 0.25f) {
+			if (fabsf(alpha_shifted) < 0.25) {
+			    cmd_energy = 0;
+			    cmd_kick = 0;
 				state = STATE_LQR;
 			} else {
 				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
@@ -234,6 +250,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			break;
 		case STATE_LQR:
 			if (fabsf(alpha_shifted) > 0.5f) {
+				cmd_energy = 0;
 				state = STATE_WAIT_BUTTON;
 				MDXX_set_range(&motor, 2000, 0);
 			} else {
@@ -245,13 +262,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			}
 			break;
 		case STATE_EMERGENCY:
+			cmd_lqr = 0;
 			MDXX_set_range(&motor, 2000, 0);
 			QEI_reset(&motor_encoder);
 			QEI_reset(&pendulum_encoder);
+			kf_clear(&motor_filter);
+			total_cmd = 0;
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-			static uint8_t released = 0;
 
-			if (HAL_GPIO_ReadPin(emergency_GPIO_Port, emergency_Pin) == 0) {
+			if (emer == 0) {
 				released = 1;
 			}
 
@@ -270,8 +289,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if (GPIO_Pin == emergency_Pin) {
-//		state = STATE_EMERGENCY;
-//		debug = 1;
+		state = STATE_EMERGENCY;
+		released = 0;
 	}
 }
 /* USER CODE END 4 */

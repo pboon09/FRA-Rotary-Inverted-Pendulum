@@ -12,7 +12,20 @@ EnergyCtrl swingup;
 
 LQR_Controller lqr_ctrl;
 
-float32_t K_matlab[4] = { -3.2571f, 27.0816f, -2.0854f, 1.9780f };
+KalmanFilter motor_filter;
+
+float32_t K_matlab[4] = { -0.8197f, 11.3205f, -0.6469f, 1.1683f };
+//float32_t K_matlab[4] = { -3.2571f, 27.0816f, -2.0854f, 1.9780f };
+
+float32_t A[16] = {1.0f, 9.999812785357154e-04f, -1.149563041803406e-04f, 7.180678148697623e-06f,
+                   0.0f, 0.999950617296464f,   -0.229910715302858f, 0.014322070901902f,
+                   0.0f, 0.0f   ,   1.0f  , 0.0f,
+                   0.0f,-0.004961131606500f, 5.718837195395508e-04f, 0.983689934032327f};
+
+float32_t B[4] = {1.908889505894626e-07f,
+				  5.718837195395508e-04f,
+				  0.0f,
+				  0.078991236957537f};
 
 void config_begin() {
 	QEI_init(&motor_encoder, ENC_TIM1, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
@@ -27,6 +40,8 @@ void config_begin() {
 
 	EnergyCtrl_Init(&swingup, PENDULUM_MASS, PENDULUM_LENGTH, PENDULUM_INERTIA,
 	GRAVITY, ENERYGY_GAIN);
+
+	kf_init(&motor_filter, A, B, 1.0f, 0.0005f);
 
 	LQR_Init(&lqr_ctrl, K_matlab, VOLTAGE_LIMIT);
 

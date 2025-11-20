@@ -8,6 +8,7 @@
 #include "energy_swingup.h"
 #include "FIR.h"
 #include "lqr.h"
+#include "MotorKalman.h"
 
 extern TIM_HandleTypeDef htim2;
 #define CONTROL_TIM &htim2
@@ -46,6 +47,8 @@ extern LQR_Controller lqr_ctrl;
 #define VOLTAGE_LIMIT 10.0
 
 #define MOTOR_VOLTAGE_LIMIT 24.0
+
+extern KalmanFilter motor_filter;
 
 void config_begin();
 

@@ -13,13 +13,12 @@
 #include <math.h>
 
 typedef struct {
-    float *coeffs;           // Filter coefficients
-    float *buffer;           // Circular buffer for input samples
-    uint16_t numTaps;        // Number of filter taps
-    uint16_t bufferIndex;    // Current position in circular buffer
+    float *coeffs;
+    float *buffer;
+    uint16_t numTaps;
+    uint16_t bufferIndex;
 } FIR;
 
-// Function prototypes
 void FIR_init(FIR *fir, uint16_t numTaps, float cutoffFreq, float samplingFreq);
 float FIR_process(FIR *fir, float input);
 void FIR_reset(FIR *fir);

@@ -44,17 +44,17 @@ sysd = c2d(sysc, Ts, 'zoh');
 Ad = sysd.A;  Bd = sysd.B;
 
 %Bryson’s rule
-theta_max     = 0.10;  % rad    (arm stay near 0)
-alpha_max     = 0.10;  % rad    (tight around upright)
-thetaDot_max  = 1.0;   % rad/s
-alphaDot_max  = 1.0;   % rad/s
-u_max         = 24.0;   % V (Limit)
+theta_max     = 0.15;  % rad    (arm stay near 0)
+alpha_max     = 0.15;  % rad    (tight around upright)
+thetaDot_max  = 1.5;   % rad/s
+alphaDot_max  = 1.5;   % rad/s
+u_max         = 3.0;   % V (Limit)
 
 Qb = diag([1/theta_max^2, 1/alpha_max^2, 1/thetaDot_max^2, 1/alphaDot_max^2]);
 Rb = 1/u_max^2;
 
 % Gentle tilt: care more about alpha, slightly relax theta_dot
-w_alpha = 3.0;  w_thetadot = 0.5;
+w_alpha = 1.0;  w_thetadot = 0.2;
 Q = Qb .* diag([1, w_alpha, w_thetadot, 1]);
 R = Rb;
 
