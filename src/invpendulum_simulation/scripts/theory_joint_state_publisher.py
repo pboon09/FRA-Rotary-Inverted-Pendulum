@@ -4,7 +4,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
-from std_msgs.msg import Header, Float32
+from std_msgs.msg import Header, Float32MultiArray
 from geometry_msgs.msg import TransformStamped
 from tf2_ros import TransformBroadcaster
 from roboticstoolbox import DHRobot, RevoluteMDH
@@ -19,7 +19,7 @@ class TheoryJointPublisher(Node):
 
         # Publishers
         self.js_pub = self.create_publisher(JointState, 'joint_states_theory', 10)
-        self.ee_pub = self.create_publisher(Float32, 'end_effector_theory', 10)
+        self.ee_pub = self.create_publisher(Float32MultiArray, 'end_effector_theory', 10)
         self.tf_pub = TransformBroadcaster(self)
         
         # Subscription
@@ -37,9 +37,9 @@ class TheoryJointPublisher(Node):
         self.pend_joint_z_local = 0.0255
         
         # Physical parameters (m)
-        self.L1 = 240.40e-3
+        self.L0 = 194e-3
+        self.L1 = 133e-3
         self.L2 = 135e-3
-        self.L0 = 64e-3
         
         self.q1 = 0.0
         self.q2 = 0.0
@@ -54,9 +54,7 @@ class TheoryJointPublisher(Node):
         self.robot.tool = SE3.Tx(self.L2)
 
         # Simulation loop
-        self.t = 0.0
-        self.dt = 0.02  # 50 Hz
-        self.timer = self.create_timer(self.dt, self.update)
+        self.timer = self.create_timer(0.01, self.update)
 
         self.get_logger().info("Theoretical Joint + TF publisher started.")
         
@@ -106,6 +104,7 @@ class TheoryJointPublisher(Node):
         v_ee = J_actual[:3, :] @ np.array([[self.dq1], [self.dq2]])
         w_ee = J_actual[3:, :] @ np.array([[self.dq1], [self.dq2]])
         v_ee_mag = np.sqrt(v_ee[0]**2 + v_ee[1]**2 + v_ee[2]**2)
+        w_ee_mag = np.sqrt(w_ee[0]**2 + w_ee[1]**2 + w_ee[2]**2)
 
         # Publish joint states
         js = JointState()
@@ -117,8 +116,8 @@ class TheoryJointPublisher(Node):
         js.effort = []
         self.js_pub.publish(js)
 
-        ee = Float32()
-        ee.data = float(v_ee_mag)
+        ee = Float32MultiArray()
+        ee.data = [float(v_ee_mag), float(w_ee_mag)]
         self.ee_pub.publish(ee)
 
         # Publish TF transforms
@@ -161,8 +160,6 @@ class TheoryJointPublisher(Node):
         tf3.transform.rotation.w = float(1.0)
 
         self.tf_pub.sendTransform([tf1, tf2, tf3])
-
-        self.t += self.dt
 
 
 

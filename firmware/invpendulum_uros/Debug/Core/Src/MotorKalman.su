@@ -1,0 +1,3 @@
+../Core/Src/MotorKalman.c:12:6:kf_init	160	static
+../Core/Src/MotorKalman.c:67:7:kf_update	96	static
+../Core/Src/MotorKalman.c:112:6:kf_clear	24	static

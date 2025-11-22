@@ -62,7 +62,8 @@ Core/Src/rip_config.o: ../Core/Src/rip_config.c ../Core/Inc/rip_config.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/filtering_functions.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/support_functions.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/quaternion_math_functions.h \
- ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h
+ ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h \
+ ../Core/Inc/MotorKalman.h
 ../Core/Inc/rip_config.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h:
@@ -133,3 +134,4 @@ Core/Src/rip_config.o: ../Core/Src/rip_config.c ../Core/Inc/rip_config.h \
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/support_functions.h:
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/quaternion_math_functions.h:
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h:
+../Core/Inc/MotorKalman.h:

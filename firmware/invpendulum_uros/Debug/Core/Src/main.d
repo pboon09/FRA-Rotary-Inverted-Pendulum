@@ -77,6 +77,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/support_functions.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/quaternion_math_functions.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h \
+ ../Core/Inc/MotorKalman.h \
  ../micro_ros_stm32cubemx_utils/microros_static_library_ide/libmicroros/include/rcl/rcl.h \
  ../micro_ros_stm32cubemx_utils/microros_static_library_ide/libmicroros/include/rcl/init.h \
  ../micro_ros_stm32cubemx_utils/microros_static_library_ide/libmicroros/include/rcl/allocator.h \
@@ -317,6 +318,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/support_functions.h:
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/quaternion_math_functions.h:
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h:
+../Core/Inc/MotorKalman.h:
 ../micro_ros_stm32cubemx_utils/microros_static_library_ide/libmicroros/include/rcl/rcl.h:
 ../micro_ros_stm32cubemx_utils/microros_static_library_ide/libmicroros/include/rcl/init.h:
 ../micro_ros_stm32cubemx_utils/microros_static_library_ide/libmicroros/include/rcl/allocator.h:

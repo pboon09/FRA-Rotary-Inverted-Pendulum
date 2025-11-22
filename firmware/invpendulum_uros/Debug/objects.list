@@ -1,5 +1,6 @@
 "./Core/Src/Cytron_MDXX.o"
 "./Core/Src/FIR.o"
+"./Core/Src/MotorKalman.o"
 "./Core/Src/PWM.o"
 "./Core/Src/QEI.o"
 "./Core/Src/app_freertos.o"
