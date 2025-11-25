@@ -1,3 +1,0 @@
-../Core/Src/lqr.c:10:6:LQR_Init	3
-../Core/Src/lqr.c:26:6:LQR_SetState	1
-../Core/Src/lqr.c:34:11:LQR_Update	3

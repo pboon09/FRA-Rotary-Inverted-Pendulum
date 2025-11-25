@@ -69,7 +69,7 @@ rcl_init_options_t init_options;
 rclc_executor_t executor;
 
 rcl_timer_t timer;
-const int timeout_ms = 10;
+const int timeout_ms = 1;
 const unsigned int timer_period = RCL_MS_TO_NS(10);
 
 rcl_publisher_t publisher;
@@ -117,7 +117,7 @@ static inline float wrap_2pi(float x);
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
 	if (timer != NULL) {
 		// Sync micro-ROS session
-		rmw_uros_sync_session(timeout_ms);
+//		rmw_uros_sync_session(timeout_ms);
 
         int64_t ns = rmw_uros_epoch_nanos();
         if (ns > 0) {
@@ -364,7 +364,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		alpha = wrap_2pi(pendulum_encoder.rads);
 		alpha_dot = FIR_process(&alpha_dot_filter, pendulum_encoder.radps);
 		theta = motor_encoder.rads;
-//		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
+		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
 		theta_dot = kf_update(&motor_filter, voltage_input, theta);
 
 		alpha_shifted = wrap_pi(alpha - M_PI);
@@ -394,7 +394,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			break;
 		case STATE_KICK:
 			kick_counter++;
-			cmd_kick = (kick_counter < 250) ? 6000 : -6000;
+			cmd_kick = (kick_counter < 250) ? 7000 : -7000;
 
 			if (kick_counter < 500) {
 				MDXX_set_range(&motor, 2000, cmd_kick);
@@ -410,7 +410,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				state = STATE_LQR;
 			} else {
 				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
-				cmd_energy = (int) (cmd_energy_norm * 6000.0f);
+				cmd_energy = (int) (cmd_energy_norm * 6500.0f);
 				MDXX_set_range(&motor, 2000, cmd_energy);
 			}
 			break;
