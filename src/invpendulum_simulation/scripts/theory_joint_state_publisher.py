@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import math
 import numpy as np
 import rclpy
@@ -19,32 +20,43 @@ class TheoryJointPublisher(Node):
 
         # Publishers
         self.js_pub = self.create_publisher(JointState, 'joint_states_theory', 10)
-        self.ee_pub = self.create_publisher(Float32MultiArray, 'end_effector_theory', 10)
+        self.ee_pub = self.create_publisher(Float32MultiArray, 'end_effector_velocity', 10)
         self.tf_pub = TransformBroadcaster(self)
         
         # Subscription
-        self.create_subscription(JointState, "joint_states_raw", self.js_raw_callback, 10)
+        self.create_subscription(JointState, "joint_states", self.js_callback, 10)
         
         # Physical parameters FROM URDF (m)
-        # Rev_Arm joint origin in base_link
         self.arm_joint_x = 0.0002
         self.arm_joint_y = 0.0
         self.arm_joint_z = 0.212
         
-        # Rev_Pendulum joint origin in Arm_Link1 frame
         self.pend_joint_x_local = 0.1215
         self.pend_joint_y_local = 0.0
         self.pend_joint_z_local = 0.0255
         
-        # Physical parameters (m)
-        self.L0 = 194e-3
-        self.L1 = 133e-3
+        # DH parameters
+        self.L0 = 237.5e-3
+        self.L1 = 133.2e-3
         self.L2 = 135e-3
         
+        # Current joint POSITIONS (from encoder)
         self.q1 = 0.0
         self.q2 = 0.0
-        self.dq1 = 0.0
-        self.dq2 = 0.0
+        
+        # MEASURED joint velocities (from encoder)
+        self.dq1_measured = 0.0
+        self.dq2_measured = 0.0
+        
+        # CALCULATED "theory" joint velocities (from FK differentiation)
+        self.dq1_theory = 0.0
+        self.dq2_theory = 0.0
+        
+        # Previous end-effector position and ROTATION MATRIX for velocity calculation
+        self.ee_pos_prev = np.zeros((3, 1))
+        self.ee_rot_prev = np.eye(3)
+        self.time_prev = self.get_clock().now()
+        self.first_callback = True
 
         # DH model for Jacobian
         link01 = RevoluteMDH(a=0, alpha=0, d=self.L0, offset=0)
@@ -53,74 +65,127 @@ class TheoryJointPublisher(Node):
         self.robot = DHRobot([link01, link12, link23], name='RIP')
         self.robot.tool = SE3.Tx(self.L2)
 
-        # Simulation loop
-        self.timer = self.create_timer(0.01, self.update)
-
-        self.get_logger().info("Theoretical Joint + TF publisher started.")
+        # Update timer
+        self.timer = self.create_timer(0.001, self.update)
         
-    def js_raw_callback(self, msg: JointState):
+        self.get_logger().info('Theory Joint Publisher started')
         
-        name2pos = dict(zip(msg.name, msg.position))
-        name2vel = dict(zip(msg.name, msg.velocity)) if msg.velocity else {}
+    def rotation_matrix_to_angular_velocity(self, R_current, R_prev, dt):
+        """Compute angular velocity from two rotation matrices"""
+        if dt <= 0:
+            return np.zeros(3)
         
-        self.q1 = name2pos.get(ORDER_IN[0], 0.0)
-        self.q2 = name2pos.get(ORDER_IN[1], 0.0)
-        self.dq1 = name2vel.get(ORDER_IN[0], 0.0)
-        self.dq2 = name2vel.get(ORDER_IN[1], 0.0)
+        R_diff = R_current @ R_prev.T
+        skew = (R_diff - np.eye(3)) / dt
+        
+        wx = (skew[2, 1] - skew[1, 2]) / 2
+        wy = (skew[0, 2] - skew[2, 0]) / 2
+        wz = (skew[1, 0] - skew[0, 1]) / 2
+        
+        return np.array([wx, wy, wz])
+    
+    def js_callback(self, msg: JointState):
+        # Extract encoder data
+        if len(msg.position) >= 2:
+            q1_new = msg.position[0]
+            q2_new = msg.position[1]
+        else:
+            return
+        
+        if len(msg.velocity) >= 2:
+            self.dq1_measured = msg.velocity[0]
+            self.dq2_measured = msg.velocity[1]
+        
+        time_now = self.get_clock().now()
+        
+        # Forward kinematics
+        q = np.array([q1_new, 0.0, q2_new])
+        T = self.robot.fkine(q)
+        ee_pos_new = T.t.reshape(3, 1)
+        ee_rot_new = T.R
+        
+        if not self.first_callback:
+            dt = (time_now - self.time_prev).nanoseconds / 1e9
+            
+            if dt > 0:
+                # Differentiate FK to get end-effector velocity (THEORY)
+                v_ee_theory = (ee_pos_new - self.ee_pos_prev) / dt
+                w_ee_theory = self.rotation_matrix_to_angular_velocity(
+                    ee_rot_new, self.ee_rot_prev, dt
+                ).reshape(3, 1)
+                
+                # Get Jacobian
+                J = self.robot.jacob0(q)
+                J_actual = J[:, [0, 2]]
+                
+                # Use inverse Jacobian to get theory joint velocities
+                v_ee_theory_full = np.vstack([v_ee_theory, w_ee_theory])
+                J_pinv = np.linalg.pinv(J_actual)
+                dq_theory = J_pinv @ v_ee_theory_full
+                
+                self.dq1_theory = float(dq_theory[0, 0])
+                self.dq2_theory = float(dq_theory[1, 0])
+            else:
+                self.dq1_theory = 0.0
+                self.dq2_theory = 0.0
+        else:
+            self.dq1_theory = 0.0
+            self.dq2_theory = 0.0
+            self.first_callback = False
+    
+        self.ee_pos_prev = ee_pos_new
+        self.ee_rot_prev = ee_rot_new
+        self.time_prev = time_now
+        
+        self.q1 = q1_new
+        self.q2 = q2_new
 
     def update(self):
-        # FK based on URDF joint origins
+        # Compute end-effector velocity using measured joint velocities
+        q = np.array([self.q1, 0.0, self.q2])
+        J = self.robot.jacob0(q)
+        J_actual = J[:, [0, 2]]
         
-        # Arm_Link1 frame: at Rev_Arm joint origin
+        dq_measured = np.array([[self.dq1_measured], [self.dq2_measured]])
+        v_ee_full = J_actual @ dq_measured
+        
+        v_ee = v_ee_full[:3]
+        w_ee = v_ee_full[3:]
+        v_ee_mag = float(np.linalg.norm(v_ee))
+        w_ee_mag = float(np.linalg.norm(w_ee))
+
+        # Publish THEORY joint velocities (for comparison)
+        js = JointState()
+        js.header = Header()
+        js.header.stamp = self.get_clock().now().to_msg()
+        js.name = [NAME_MAP[k] for k in ORDER_IN]
+        js.position = [float(self.q1), float(self.q2)]
+        js.velocity = [float(self.dq1_theory), float(self.dq2_theory)]
+        js.effort = []
+        self.js_pub.publish(js)
+
+        # Publish end-effector velocity
+        ee_msg = Float32MultiArray()
+        ee_msg.data = [v_ee_mag, w_ee_mag]
+        self.ee_pub.publish(ee_msg)
+
+        # TF broadcasting
         x1 = self.arm_joint_x
         y1 = self.arm_joint_y
         z1 = self.arm_joint_z
         
-        # Arm_Link1 rotation: rotate q1 about Z axis
         rot_arm = R.from_euler('z', self.q1)
         quat_arm = rot_arm.as_quat()
         
-        # Pendulum_Link2 frame: at Rev_Pendulum joint origin
-        # Transform from Arm_Link1 frame to base_link frame
         x2 = self.arm_joint_x + (self.pend_joint_x_local * math.cos(self.q1) - 
                                    self.pend_joint_y_local * math.sin(self.q1))
         y2 = self.arm_joint_y + (self.pend_joint_x_local * math.sin(self.q1) + 
                                    self.pend_joint_y_local * math.cos(self.q1))
         z2 = self.arm_joint_z + self.pend_joint_z_local
         
-        # Pendulum_Link2 rotation: 
-        # 1. Rotate q1 about base Z (arm rotation)
-        # 2. Rotate 90° about Y (from URDF rpy="0 1.5708 0")
-        # 3. Rotate q2 about the pendulum axis (Z in pendulum frame)
         rot_pend = R.from_euler('ZYZ', [self.q1, np.pi/2, self.q2])
-        quat_pend = rot_pend.as_quat()  # [x, y, z, w]
+        quat_pend = rot_pend.as_quat()
 
-        # Jacobian calculation (using DH model)
-        q = np.array([self.q1, 0.0, self.q2])
-        dq = np.array([self.dq1, 0.0, self.dq2])
-        
-        J = self.robot.jacob0(q)
-        J_actual = J[:, [0, 2]]
-        v_ee = J_actual[:3, :] @ np.array([[self.dq1], [self.dq2]])
-        w_ee = J_actual[3:, :] @ np.array([[self.dq1], [self.dq2]])
-        v_ee_mag = np.sqrt(v_ee[0]**2 + v_ee[1]**2 + v_ee[2]**2)
-        w_ee_mag = np.sqrt(w_ee[0]**2 + w_ee[1]**2 + w_ee[2]**2)
-
-        # Publish joint states
-        js = JointState()
-        js.header = Header()
-        js.header.stamp = self.get_clock().now().to_msg()
-        js.name = [NAME_MAP[k] for k in ORDER_IN]
-        js.position = [float(self.q1), float(self.q2)]
-        js.velocity = [float(self.dq1), float(self.dq2)]
-        js.effort = []
-        self.js_pub.publish(js)
-
-        ee = Float32MultiArray()
-        ee.data = [float(v_ee_mag), float(w_ee_mag)]
-        self.ee_pub.publish(ee)
-
-        # Publish TF transforms
         t_now = self.get_clock().now().to_msg()
 
         tf1 = TransformStamped()
@@ -150,17 +215,13 @@ class TheoryJointPublisher(Node):
         tf3 = TransformStamped()
         tf3.header.stamp = t_now
         tf3.header.frame_id = 'pendulum_link_theory'
-        tf3.child_frame_id = 'end_effector'
+        tf3.child_frame_id = 'end_effector_theory'
         tf3.transform.translation.x = float(self.L2)
-        tf3.transform.translation.y = float(0.0)
-        tf3.transform.translation.z = float(11.5e-3)
-        tf3.transform.rotation.x = float(0.0)
-        tf3.transform.rotation.y = float(0.0)
-        tf3.transform.rotation.z = float(0.0)
-        tf3.transform.rotation.w = float(1.0)
+        tf3.transform.translation.y = 0.0
+        tf3.transform.translation.z = 11.5e-3
+        tf3.transform.rotation.w = 1.0
 
         self.tf_pub.sendTransform([tf1, tf2, tf3])
-
 
 
 def main():

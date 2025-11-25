@@ -23,11 +23,14 @@ class VelocityHUD(Node):
         self.colr, self.colg, self.colb, self.cola = map(float, col)
 
         self.urdf_names = [NAME_MAP[k] for k in ORDER_IN]
-        self.mcu_names = ORDER_IN
         
+        # Joint velocities: measured (from encoders) vs theory (from FK differentiation)
         self.meas_vel = {self.urdf_names[0]: 0.0, self.urdf_names[1]: 0.0}
         self.theo_vel = {self.urdf_names[0]: 0.0, self.urdf_names[1]: 0.0}
-        self.ee = [0.0, 0.0]
+        
+        # End-effector velocity (only one - calculated from measured joint velocities)
+        self.ee_linear_vel = 0.0
+        self.ee_angular_vel = 0.0
 
         # Publishers
         self.pub = self.create_publisher(Marker, "rip_hud", 10)
@@ -36,35 +39,30 @@ class VelocityHUD(Node):
         # Subscriptions
         self.sub_meas = self.create_subscription(JointState, "joint_states", self.cb_meas, 10)
         self.sub_theo = self.create_subscription(JointState, "joint_states_theory", self.cb_theo, 10)
-        self.sub_ee = self.create_subscription(Float32MultiArray, "end_effector_theory", self.cb_ee, 10)
+        self.sub_ee = self.create_subscription(Float32MultiArray, "end_effector_velocity", self.cb_ee, 10)
 
-        self.create_timer(0.05, self.update_display)
+        self.create_timer(0.001, self.update_display)
 
     def cb_meas(self, msg: JointState):
         name2vel = dict(zip(msg.name, msg.velocity)) if len(msg.velocity) == len(msg.name) else {}
-        for i, (urdf_name, mcu_name) in enumerate(zip(self.urdf_names, self.mcu_names)):
+        for urdf_name in self.urdf_names:
             if urdf_name in name2vel:
                 self.meas_vel[urdf_name] = name2vel[urdf_name]
-            elif mcu_name in name2vel:
-                self.meas_vel[urdf_name] = name2vel[mcu_name]
 
     def cb_theo(self, msg: JointState):
         name2vel = dict(zip(msg.name, msg.velocity)) if len(msg.velocity) == len(msg.name) else {}
-        for i, (urdf_name, mcu_name) in enumerate(zip(self.urdf_names, self.mcu_names)):
+        for urdf_name in self.urdf_names:
             if urdf_name in name2vel:
                 self.theo_vel[urdf_name] = name2vel[urdf_name]
-            elif mcu_name in name2vel:
-                self.theo_vel[urdf_name] = name2vel[mcu_name]
 
     def cb_ee(self, msg: Float32MultiArray):
-        self.ee[0] = msg.data[0]
-        self.ee[1] = msg.data[1]
+        if len(msg.data) >= 2:
+            self.ee_linear_vel = msg.data[0]
+            self.ee_angular_vel = msg.data[1]
 
     def create_sphere_marker(self, frame_id, r, g, b, marker_id):
-
         m = Marker()
         m.header.frame_id = frame_id
-
         from builtin_interfaces.msg import Time
         m.header.stamp = Time()
         m.ns = "frame_spheres"
@@ -77,34 +75,42 @@ class VelocityHUD(Node):
         m.pose.position.z = 0.0
         m.pose.orientation.w = 1.0
         
-        m.scale.x = 0.05
-        m.scale.y = 0.05
-        m.scale.z = 0.05
+        m.scale.x = 0.04
+        m.scale.y = 0.04
+        m.scale.z = 0.04
         
         m.color.r = r
         m.color.g = g
         m.color.b = b
-        m.color.a = 0.4
+        m.color.a = 0.6
         
         m.lifetime.sec = 0
         return m
 
     def update_display(self):
+        """Update HUD display and frame markers"""
         arm_m = self.meas_vel[self.urdf_names[0]]
         pend_m = self.meas_vel[self.urdf_names[1]]
         arm_t = self.theo_vel[self.urdf_names[0]]
         pend_t = self.theo_vel[self.urdf_names[1]]
 
+        # Calculate differences for validation
+        arm_diff = abs(arm_m - arm_t)
+        pend_diff = abs(pend_m - pend_t)
+
+        # Create text display
         text = (
-            f"Arm velocity meas: {arm_m:+.3f} rad/s\n"
-            f"Pendulum velocity meas: {pend_m:+.3f} rad/s\n"
-            f"Arm velocity theory: {arm_t:+.3f} rad/s\n"
-            f"Pendulum velocity theory: {pend_t:+.3f} rad/s\n"
-            f"End effector linear velocity: {self.ee[0]:+.3f} m/s\n"
-            f"End effector angular velocity: {self.ee[1]:+.3f} rad/s"
+            f"Arm Joint Velocity (Meas): {arm_m:+.3f} rad/s\n"
+            f"Arm Joint Velocity (Theory): {arm_t:+.3f} rad/s\n"
+            f"\n"
+            f"Pendulum Joint Velocity (Meas): {pend_m:+.3f} rad/s\n"
+            f"Pendulum Joint Velocity (Theory): {pend_t:+.3f} rad/s\n"
+            f"\n"
+            f"End Effector Linear Velocity: {self.ee_linear_vel:.4f} m/s\n"
+            f"End Effector Angular Velocity: {self.ee_angular_vel:.4f} rad/s"
         )
 
-        # Text HUD
+        # Text HUD marker
         m = Marker()
         m.header.frame_id = self.frame_id
         m.header.stamp = self.get_clock().now().to_msg()
@@ -128,23 +134,29 @@ class VelocityHUD(Node):
 
         self.pub.publish(m)
 
-        # Frame markers
+        # Frame markers - simple spheres
         marker_array = MarkerArray()
         
-        # Theory frames - GREEN
+        # Theory frames - PURPLE
         marker_array.markers.append(
             self.create_sphere_marker('arm_link_theory', 0.5, 0.0, 1.0, 1)
         )
         marker_array.markers.append(
             self.create_sphere_marker('pendulum_link_theory', 0.5, 0.0, 1.0, 2)
         )
-        
-        # URDF frames - CYAN
         marker_array.markers.append(
-            self.create_sphere_marker('arm_link', 1.0, 1.0, 0.0, 3)
+            self.create_sphere_marker('end_effector_theory', 0.5, 0.0, 1.0, 3)
+        )
+        
+        # URDF frames - YELLOW
+        marker_array.markers.append(
+            self.create_sphere_marker('arm_link', 1.0, 1.0, 0.0, 4)
         )
         marker_array.markers.append(
-            self.create_sphere_marker('pendulum_link', 1.0, 1.0, 0.0, 4)
+            self.create_sphere_marker('pendulum_link', 1.0, 1.0, 0.0, 5)
+        )
+        marker_array.markers.append(
+            self.create_sphere_marker('end_effector', 1.0, 1.0, 0.0, 6)
         )
         
         self.marker_pub.publish(marker_array)

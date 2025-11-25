@@ -150,4 +150,22 @@
     <axis
       xyz="0 0 1" />
   </joint>
+
+  <link name="end_effector">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </visual>
+  </link>
+
+  <joint
+    name="Pendulum_to_EE"
+    type="fixed">
+    <origin
+      xyz="0.135 0 0.0115"
+      rpy="0 0 0" />
+    <parent
+      link="pendulum_link" />
+    <child
+      link="end_effector" />
+  </joint>
 </robot>
