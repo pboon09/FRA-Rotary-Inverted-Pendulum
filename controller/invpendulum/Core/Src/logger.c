@@ -1,0 +1,186 @@
+/*
+ * logger.c
+ *
+ *  Created on: Nov 6, 2025
+ *      Author: bpbeam
+ */
+
+#include "logger.h"
+#include <string.h>
+#include <stdio.h>
+
+#include "main.h"
+#include "app_fatfs.h"
+#include "ff.h"
+
+static FATFS FatFs;     // File system object
+static uint8_t initialized = 0;
+
+extern void Debug_Printf(const char* format, ...);
+
+// Initialize Logger (mount filesystem)
+uint8_t Logger_Init(void) {
+    FRESULT res;
+
+    Debug_Printf("Logger_Init: Starting...\r\n");
+
+    // Check disk status
+    Debug_Printf("  Checking disk status...\r\n");
+    DSTATUS disk_stat = disk_status(0);
+    Debug_Printf("  Disk status: 0x%02X ", disk_stat);
+    if (disk_stat & STA_NOINIT) Debug_Printf("(NOT_INIT) ");
+    if (disk_stat & STA_NODISK) Debug_Printf("(NO_DISK) ");
+    if (disk_stat & STA_PROTECT) Debug_Printf("(PROTECTED) ");
+    Debug_Printf("\r\n");
+
+    // Initialize disk
+    Debug_Printf("  Initializing disk...\r\n");
+    disk_stat = disk_initialize(0);
+    Debug_Printf("  Disk init result: 0x%02X\r\n", disk_stat);
+
+    if (disk_stat != 0) {
+        Debug_Printf("  FAILED: Disk initialization error!\r\n");
+        return 1;
+    }
+    Debug_Printf("  Disk initialized OK\r\n");
+
+    // Mount filesystem
+    Debug_Printf("  Mounting filesystem...\r\n");
+    res = f_mount(&FatFs, "", 1);
+    Debug_Printf("  f_mount result: %d ", res);
+
+    switch(res) {
+        case FR_OK:
+            Debug_Printf("(OK)\r\n");
+            break;
+        case FR_DISK_ERR:
+            Debug_Printf("(DISK_ERR - Low level I/O error)\r\n");
+            return 1;
+        case FR_NOT_READY:
+            Debug_Printf("(NOT_READY - Drive not ready)\r\n");
+            return 1;
+        case FR_NO_FILESYSTEM:
+            Debug_Printf("(NO_FILESYSTEM - Not FAT32)\r\n");
+            return 1;
+        default:
+            Debug_Printf("(Error %d)\r\n", res);
+            return 1;
+    }
+
+    initialized = 1;
+    Debug_Printf("Logger_Init: SUCCESS!\r\n");
+    return 0;
+}
+
+// Write string to file (overwrites)
+uint8_t Logger_WriteString(const char *filename, const char *data) {
+    FIL file;
+    FRESULT res;
+    UINT bytesWritten;
+
+    if (!initialized) return 1;
+
+    // Open file for writing (create if doesn't exist, overwrite if exists)
+    res = f_open(&file, filename, FA_WRITE | FA_CREATE_ALWAYS);
+    if (res != FR_OK) return 2;
+
+    // Write data
+    res = f_write(&file, data, strlen(data), &bytesWritten);
+
+    // Close file
+    f_close(&file);
+
+    return (res == FR_OK && bytesWritten == strlen(data)) ? 0 : 3;
+}
+
+// Append line to file (creates if doesn't exist)
+uint8_t Logger_WriteLine(const char *filename, const char *data) {
+    FIL file;
+    FRESULT res;
+    UINT bytesWritten;
+
+    if (!initialized) return 1;
+
+    // Open file for appending (create if doesn't exist)
+    res = f_open(&file, filename, FA_WRITE | FA_OPEN_APPEND);
+    if (res != FR_OK) {
+        // Try creating the file
+        res = f_open(&file, filename, FA_WRITE | FA_CREATE_NEW);
+        if (res != FR_OK) return 2;
+    }
+
+    // Write data
+    res = f_write(&file, data, strlen(data), &bytesWritten);
+    if (res != FR_OK || bytesWritten != strlen(data)) {
+        f_close(&file);
+        return 3;
+    }
+
+    // Write newline
+    res = f_write(&file, "\r\n", 2, &bytesWritten);
+
+    // Close file
+    f_close(&file);
+
+    return (res == FR_OK) ? 0 : 3;
+}
+
+// Write binary data to file
+uint8_t Logger_WriteData(const char *filename, const uint8_t *data, uint32_t len) {
+    FIL file;
+    FRESULT res;
+    UINT bytesWritten;
+
+    if (!initialized) return 1;
+
+    // Open file for appending
+    res = f_open(&file, filename, FA_WRITE | FA_OPEN_APPEND);
+    if (res != FR_OK) {
+        res = f_open(&file, filename, FA_WRITE | FA_CREATE_NEW);
+        if (res != FR_OK) return 2;
+    }
+
+    // Write data
+    res = f_write(&file, data, len, &bytesWritten);
+
+    // Close file
+    f_close(&file);
+
+    return (res == FR_OK && bytesWritten == len) ? 0 : 3;
+}
+
+void Logger_PrintStatus(void) {
+    if (!initialized) {
+        printf("Logger not initialized\r\n");
+        return;
+    }
+
+    FATFS *fs;
+    DWORD fre_clust;
+    FRESULT res = f_getfree("", &fre_clust, &fs);
+
+    if (res == FR_OK) {
+        uint32_t total = (fs->n_fatent - 2) * fs->csize / 2; // KB
+        uint32_t free = fre_clust * fs->csize / 2; // KB
+        printf("SD Card: %lu KB total, %lu KB free\r\n", total, free);
+    } else {
+        printf("Error reading SD card info: %d\r\n", res);
+    }
+}
+
+// Test function
+void Logger_Test(void) {
+    char buffer[100];
+
+    // Test 1: Write a simple file
+    Logger_WriteString("test.txt", "Hello from STM32!\r\n");
+
+    // Test 2: Append multiple lines
+    Logger_WriteLine("log.txt", "System started");
+    Logger_WriteLine("log.txt", "Sensor reading: 25.3");
+    Logger_WriteLine("log.txt", "Sensor reading: 26.1");
+
+    // Test 3: Write with formatting
+    sprintf(buffer, "Temperature: %d, Humidity: %d", 25, 60);
+    Logger_WriteLine("sensors.txt", buffer);
+}

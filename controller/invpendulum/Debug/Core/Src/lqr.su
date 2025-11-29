@@ -1,0 +1,3 @@
+../Core/Src/lqr.c:10:6:LQR_Init	32	static
+../Core/Src/lqr.c:26:6:LQR_SetState	32	static
+../Core/Src/lqr.c:34:11:LQR_Update	16	static

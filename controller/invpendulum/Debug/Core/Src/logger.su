@@ -1,0 +1,6 @@
+../Core/Src/logger.c:22:9:Logger_Init	16	static
+../Core/Src/logger.c:76:9:Logger_WriteString	592	static
+../Core/Src/logger.c:97:9:Logger_WriteLine	592	static
+../Core/Src/logger.c:129:9:Logger_WriteData	592	static
+../Core/Src/logger.c:152:6:Logger_PrintStatus	32	static
+../Core/Src/logger.c:172:6:Logger_Test	112	static

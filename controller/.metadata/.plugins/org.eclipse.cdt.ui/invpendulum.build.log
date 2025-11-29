@@ -1,0 +1,10 @@
+22:09:28 **** Incremental Build of configuration Debug for project invpendulum ****
+make -j12 all 
+arm-none-eabi-size  invpendulum.elf 
+   text	   data	    bss	    dec	    hex	filename
+  46276	    224	   3904	  50404	   c4e4	invpendulum.elf
+Finished building: default.size.stdout
+ 
+
+22:09:29 Build Finished. 0 errors, 0 warnings. (took 593ms)
+
