@@ -73,7 +73,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/support_functions.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/quaternion_math_functions.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h \
- ../Core/Inc/MotorKalman.h ../Core/Inc/logger.h
+ ../Core/Inc/MotorKalman.h ../Core/Inc/led_matrix.h ../Core/Inc/hc05.h \
+ ../Core/Inc/sd_logger.h ../Core/Inc/sd_spi.h
 ../Core/Inc/main.h:
 ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h:
 ../Core/Inc/stm32g4xx_hal_conf.h:
@@ -161,4 +162,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/quaternion_math_functions.h:
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h:
 ../Core/Inc/MotorKalman.h:
-../Core/Inc/logger.h:
+../Core/Inc/led_matrix.h:
+../Core/Inc/hc05.h:
+../Core/Inc/sd_logger.h:
+../Core/Inc/sd_spi.h:

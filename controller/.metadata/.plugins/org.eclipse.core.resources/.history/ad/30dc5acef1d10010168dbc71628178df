@@ -1,0 +1,54 @@
+#include <rip_config.h>
+
+MDXX motor;
+
+QEI motor_encoder;
+QEI pendulum_encoder;
+
+FIR alpha_dot_filter;
+FIR theta_dot_filter;
+
+EnergyCtrl swingup;
+
+LQR_Controller lqr_ctrl;
+
+KalmanFilter motor_filter;
+
+float32_t K_matlab[4] = { -0.8197f, 11.3205f, -0.6469f, 1.1683f };
+//float32_t K_matlab[4] = { -3.2571f, 27.0816f, -2.0854f, 1.9780f };
+
+float32_t A[16] = {1.0f, 9.999812785357154e-04f, -1.149563041803406e-04f, 7.180678148697623e-06f,
+                   0.0f, 0.999950617296464f,   -0.229910715302858f, 0.014322070901902f,
+                   0.0f, 0.0f   ,   1.0f  , 0.0f,
+                   0.0f,-0.004961131606500f, 5.718837195395508e-04f, 0.983689934032327f};
+
+float32_t B[4] = {1.908889505894626e-07f,
+				  5.718837195395508e-04f,
+				  0.0f,
+				  0.078991236957537f};
+
+HC05 hc05;
+LED_Matrix matrix;
+
+void config_begin() {
+	QEI_init(&motor_encoder, ENC_TIM1, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
+	QEI_init(&pendulum_encoder, ENC_TIM2, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
+
+	MDXX_GPIO_init(&motor, MOTOR1_TIM, MOTOR1_TIM_CH, MOTOR1_GPIOx,
+	MOTOR1_GPIO_Pin);
+	MDXX_set_range(&motor, 2000, 0);
+
+	FIR_init(&alpha_dot_filter, TAPS, CUTOFF, SAMPLING_RATE);
+	FIR_init(&theta_dot_filter, TAPS, CUTOFF, SAMPLING_RATE);
+
+	EnergyCtrl_Init(&swingup, PENDULUM_MASS, PENDULUM_LENGTH, PENDULUM_INERTIA,
+	GRAVITY, ENERYGY_GAIN);
+
+	kf_init(&motor_filter, A, B, 1.0f, 0.0005f);
+
+	LQR_Init(&lqr_ctrl, K_matlab, VOLTAGE_LIMIT);
+
+	LED_Matrix_Init(&hmatrix);
+
+	HAL_TIM_Base_Start_IT(CONTROL_TIM);
+}

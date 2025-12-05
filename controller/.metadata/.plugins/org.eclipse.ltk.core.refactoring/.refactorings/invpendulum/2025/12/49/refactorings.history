@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;invpendulum/Core/Src/logger.c&apos; to &apos;sd_logger.c&apos;" description="Rename resource &apos;logger.c&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="Core/Src/logger.c" name="sd_logger.c" stamp="1764951307384" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;invpendulum/Core/Inc/logger.h&apos; to &apos;sd_logger.h&apos;" description="Rename resource &apos;logger.h&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="Core/Inc/logger.h" name="sd_logger.h" stamp="1764951328374" updateReferences="true"/>
+</session>

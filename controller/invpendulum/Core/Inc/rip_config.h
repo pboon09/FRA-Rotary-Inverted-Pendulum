@@ -9,6 +9,10 @@
 #include "FIR.h"
 #include "lqr.h"
 #include "MotorKalman.h"
+#include "led_matrix.h"
+#include "hc05.h"
+#include "sd_logger.h"
+#include "sd_spi.h"
 
 extern TIM_HandleTypeDef htim2;
 #define CONTROL_TIM &htim2
@@ -50,6 +54,25 @@ extern LQR_Controller lqr_ctrl;
 
 extern KalmanFilter motor_filter;
 
-void config_begin();
+extern LED_Matrix_Handle_t hmatrix;
+extern HC05_Handle_t hc05;
+extern SD_Logger_Handle_t sd_logger;
+
+extern UART_HandleTypeDef huart3;
+
+typedef enum {
+    STATE_WAIT_BUTTON,
+    STATE_KICK,
+    STATE_SWINGUP,
+    STATE_LQR,
+    STATE_EMERGENCY
+} PendulumState;
+
+extern volatile uint8_t logging_enabled;
+extern volatile uint8_t led_display_enabled;
+
+void config_begin(void);
+void config_begin_communication(void);
+void HC05_CommandHandler(char *command);
 
 #endif

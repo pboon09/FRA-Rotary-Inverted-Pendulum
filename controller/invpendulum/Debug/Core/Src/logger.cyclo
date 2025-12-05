@@ -1,6 +1,0 @@
-../Core/Src/logger.c:22:9:Logger_Init	9
-../Core/Src/logger.c:76:9:Logger_WriteString	5
-../Core/Src/logger.c:97:9:Logger_WriteLine	7
-../Core/Src/logger.c:129:9:Logger_WriteData	6
-../Core/Src/logger.c:152:6:Logger_PrintStatus	3
-../Core/Src/logger.c:172:6:Logger_Test	1

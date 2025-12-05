@@ -28,7 +28,6 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "rip_config.h"
-#include "logger.h"
 #include <stdio.h>
 #include <stdarg.h>
 /* USER CODE END Includes */
@@ -56,14 +55,11 @@ int total_cmd, cmd_energy, cmd_lqr, cmd_kick;
 
 float alpha, alpha_shifted, alpha_dot, theta, theta_dot, voltage_input;
 
-typedef enum {
-	STATE_WAIT_BUTTON, STATE_KICK, STATE_SWINGUP, STATE_LQR, STATE_EMERGENCY
-} PendulumState;
-
 PendulumState state = STATE_WAIT_BUTTON;
 int kick_counter = 0;
 
 int debug, emer, released, led_counter = 0;
+uint16_t log_counter = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -128,6 +124,7 @@ int main(void)
   MX_LPUART1_UART_Init();
   /* USER CODE BEGIN 2 */
   config_begin();
+  config_begin_communication();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -138,6 +135,11 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  HAL_IWDG_Refresh(&hiwdg);
+	  HC05_Process(&hc05);
+	  if (led_display_enabled && (state != STATE_WAIT_BUTTON)) {
+		  LED_Matrix_DrawPendulum(&hmatrix, alpha, LED_MATRIX_COLOR_WHITE);
+		  LED_Matrix_RefreshDisplay(&hmatrix, 5);  // Quick 5ms refresh
+	  }
   }
   /* USER CODE END 3 */
 }
@@ -225,6 +227,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		theta_dot = kf_update(&motor_filter, voltage_input, theta);
 
 		alpha_shifted = wrap_pi(alpha - M_PI);
+
+		if (logging_enabled && ++log_counter >= 10) {
+			SD_Logger_WriteData(&sd_logger, alpha, alpha_dot, theta, theta_dot);
+			log_counter = 0;
+		}
 
 		switch (state) {
 		case STATE_WAIT_BUTTON:
@@ -315,6 +322,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		state = STATE_EMERGENCY;
 		released = 0;
 	}
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &huart3) {
+        HC05_UART_RxCpltCallback(&hc05);
+    }
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart == &huart3) {
+        HC05_UART_TxCpltCallback(&hc05);
+    }
 }
 /* USER CODE END 4 */
 

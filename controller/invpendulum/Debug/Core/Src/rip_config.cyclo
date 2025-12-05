@@ -1,1 +1,3 @@
-../Core/Src/rip_config.c:30:6:config_begin	1
+../Core/Src/rip_config.c:39:6:config_begin	1
+../Core/Src/rip_config.c:60:6:config_begin_communication	1
+../Core/Src/rip_config.c:69:6:HC05_CommandHandler	28

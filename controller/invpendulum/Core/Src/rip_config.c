@@ -1,4 +1,7 @@
-#include <rip_config.h>
+#include "rip_config.h"
+#include <string.h>
+#include <ctype.h>
+#include <stdio.h>
 
 MDXX motor;
 
@@ -14,8 +17,11 @@ LQR_Controller lqr_ctrl;
 
 KalmanFilter motor_filter;
 
+LED_Matrix_Handle_t hmatrix;
+HC05_Handle_t hc05;
+SD_Logger_Handle_t sd_logger;
+
 float32_t K_matlab[4] = { -0.8197f, 11.3205f, -0.6469f, 1.1683f };
-//float32_t K_matlab[4] = { -3.2571f, 27.0816f, -2.0854f, 1.9780f };
 
 float32_t A[16] = {1.0f, 9.999812785357154e-04f, -1.149563041803406e-04f, 7.180678148697623e-06f,
                    0.0f, 0.999950617296464f,   -0.229910715302858f, 0.014322070901902f,
@@ -23,27 +29,176 @@ float32_t A[16] = {1.0f, 9.999812785357154e-04f, -1.149563041803406e-04f, 7.1806
                    0.0f,-0.004961131606500f, 5.718837195395508e-04f, 0.983689934032327f};
 
 float32_t B[4] = {1.908889505894626e-07f,
-				  5.718837195395508e-04f,
-				  0.0f,
-				  0.078991236957537f};
+                  5.718837195395508e-04f,
+                  0.0f,
+                  0.078991236957537f};
+
+volatile uint8_t logging_enabled = 0;
+volatile uint8_t led_display_enabled = 1;
 
 void config_begin() {
-	QEI_init(&motor_encoder, ENC_TIM1, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
-	QEI_init(&pendulum_encoder, ENC_TIM2, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
+    QEI_init(&motor_encoder, ENC_TIM1, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
+    QEI_init(&pendulum_encoder, ENC_TIM2, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
 
-	MDXX_GPIO_init(&motor, MOTOR1_TIM, MOTOR1_TIM_CH, MOTOR1_GPIOx,
-	MOTOR1_GPIO_Pin);
-	MDXX_set_range(&motor, 2000, 0);
+    MDXX_GPIO_init(&motor, MOTOR1_TIM, MOTOR1_TIM_CH, MOTOR1_GPIOx, MOTOR1_GPIO_Pin);
+    MDXX_set_range(&motor, 2000, 0);
 
-	FIR_init(&alpha_dot_filter, TAPS, CUTOFF, SAMPLING_RATE);
-	FIR_init(&theta_dot_filter, TAPS, CUTOFF, SAMPLING_RATE);
+    FIR_init(&alpha_dot_filter, TAPS, CUTOFF, SAMPLING_RATE);
+    FIR_init(&theta_dot_filter, TAPS, CUTOFF, SAMPLING_RATE);
 
-	EnergyCtrl_Init(&swingup, PENDULUM_MASS, PENDULUM_LENGTH, PENDULUM_INERTIA,
-	GRAVITY, ENERYGY_GAIN);
+    EnergyCtrl_Init(&swingup, PENDULUM_MASS, PENDULUM_LENGTH, PENDULUM_INERTIA, GRAVITY, ENERYGY_GAIN);
 
-	kf_init(&motor_filter, A, B, 1.0f, 0.0005f);
+    kf_init(&motor_filter, A, B, 1.0f, 0.0005f);
+    LQR_Init(&lqr_ctrl, K_matlab, VOLTAGE_LIMIT);
 
-	LQR_Init(&lqr_ctrl, K_matlab, VOLTAGE_LIMIT);
+    LED_Matrix_Init(&hmatrix);
+    SD_Logger_Init(&sd_logger);
 
-	HAL_TIM_Base_Start_IT(CONTROL_TIM);
+    HAL_TIM_Base_Start_IT(CONTROL_TIM);
+}
+
+void config_begin_communication() {
+    HC05_Init(&hc05, &huart3, 9600);
+    HC05_SetCommandCallback(&hc05, HC05_CommandHandler);
+    HC05_Send(&hc05, "\r\n===== RIP Control System =====\r\n");
+    HC05_Send(&hc05, "Type HELP for commands\r\n");
+    HC05_Send(&hc05, "\r\n> ");
+    HC05_Start(&hc05);
+}
+
+void HC05_CommandHandler(char *command) {
+    /* Echo received command */
+    HC05_SendFormatted(&hc05, "[RX]: %s\r\n", command);
+
+    /* Convert to uppercase for comparison */
+    for (char *p = command; *p; p++) {
+        *p = toupper(*p);
+    }
+
+    /* Get access to pendulum state from main.c */
+    extern PendulumState state;
+    extern int kick_counter;
+
+    /* Process commands */
+    if (strcmp(command, "START") == 0) {
+        /* Start swing-up sequence */
+        if (state == STATE_WAIT_BUTTON || state == STATE_EMERGENCY) {
+            kick_counter = 0;
+            state = STATE_KICK;
+            QEI_reset(&pendulum_encoder);
+            QEI_reset(&motor_encoder);
+            kf_clear(&motor_filter);
+            HC05_Send(&hc05, "[TX]: Starting swing-up sequence\r\n");
+        } else {
+            HC05_Send(&hc05, "[TX]: System already running\r\n");
+        }
+    }
+    else if (strcmp(command, "STOP") == 0) {
+        /* Stop and return to wait state */
+        state = STATE_WAIT_BUTTON;
+        MDXX_set_range(&motor, 2000, 0);
+        HC05_Send(&hc05, "[TX]: System stopped\r\n");
+    }
+    else if (strcmp(command, "RESET") == 0) {
+        /* Full system reset */
+        state = STATE_WAIT_BUTTON;
+        logging_enabled = 0;
+        MDXX_set_range(&motor, 2000, 0);
+        QEI_reset(&motor_encoder);
+        QEI_reset(&pendulum_encoder);
+        kf_clear(&motor_filter);
+
+        if (SD_Logger_IsOpen(&sd_logger)) {
+            SD_Logger_Close(&sd_logger);
+        }
+
+        HC05_Send(&hc05, "[TX]: System reset\r\n");
+    }
+    else if (strcmp(command, "EMERGENCY") == 0) {
+        /* Emergency stop */
+        state = STATE_EMERGENCY;
+        MDXX_set_range(&motor, 2000, 0);
+        HC05_Send(&hc05, "[TX]: EMERGENCY STOP activated\r\n");
+    }
+    else if (strcmp(command, "LOGSTART") == 0) {
+        if (!SD_Logger_IsOpen(&sd_logger)) {
+            char filename[32];
+            static uint8_t log_num = 0;
+            snprintf(filename, sizeof(filename), "log_%03d.csv", log_num++);
+
+            if (SD_Logger_CreateFile(&sd_logger, filename)) {
+                SD_Logger_WriteHeader(&sd_logger);
+                logging_enabled = 1;
+                HC05_SendFormatted(&hc05, "[TX]: Logging started (%s)\r\n", filename);
+            } else {
+                HC05_Send(&hc05, "[TX]: ERR - Failed to create log file\r\n");
+            }
+        } else {
+            logging_enabled = 1;
+            HC05_Send(&hc05, "[TX]: Logging resumed\r\n");
+        }
+    }
+    else if (strcmp(command, "LOGSTOP") == 0) {
+        if (logging_enabled) {
+            logging_enabled = 0;
+            if (SD_Logger_IsOpen(&sd_logger)) {
+                SD_Logger_Sync(&sd_logger);
+                HC05_SendFormatted(&hc05, "[TX]: Logging stopped (%lu samples)\r\n",
+                                 SD_Logger_GetSampleCount(&sd_logger));
+                SD_Logger_Close(&sd_logger);
+            }
+        } else {
+            HC05_Send(&hc05, "[TX]: Logging already stopped\r\n");
+        }
+    }
+    else if (strcmp(command, "LEDON") == 0) {
+        led_display_enabled = 1;
+        HC05_Send(&hc05, "[TX]: LED display enabled\r\n");
+    }
+    else if (strcmp(command, "LEDOFF") == 0) {
+        led_display_enabled = 0;
+        LED_Matrix_ClearBuffer(&hmatrix);
+        HC05_Send(&hc05, "[TX]: LED display disabled\r\n");
+    }
+    else if (strcmp(command, "STATUS") == 0) {
+        const char *state_str;
+        switch (state) {
+            case STATE_WAIT_BUTTON: state_str = "WAIT_BUTTON"; break;
+            case STATE_KICK:        state_str = "KICK"; break;
+            case STATE_SWINGUP:     state_str = "SWINGUP"; break;
+            case STATE_LQR:         state_str = "LQR (BALANCING)"; break;
+            case STATE_EMERGENCY:   state_str = "EMERGENCY"; break;
+            default:                state_str = "UNKNOWN"; break;
+        }
+
+        HC05_SendFormatted(&hc05, "[TX]: Status:\r\n");
+        HC05_SendFormatted(&hc05, "  State: %s\r\n", state_str);
+        HC05_SendFormatted(&hc05, "  Logging: %s\r\n", logging_enabled ? "ON" : "OFF");
+        HC05_SendFormatted(&hc05, "  LED Display: %s\r\n", led_display_enabled ? "ON" : "OFF");
+
+        if (SD_Logger_IsOpen(&sd_logger)) {
+            HC05_SendFormatted(&hc05, "  Log file: %s\r\n", sd_logger.filename);
+            HC05_SendFormatted(&hc05, "  Samples: %lu\r\n",
+                             SD_Logger_GetSampleCount(&sd_logger));
+        }
+    }
+    else if (strcmp(command, "HELP") == 0) {
+        HC05_Send(&hc05, "[TX]: Available commands:\r\n");
+        HC05_Send(&hc05, "  START     - Start swing-up sequence\r\n");
+        HC05_Send(&hc05, "  STOP      - Stop system\r\n");
+        HC05_Send(&hc05, "  RESET     - Full system reset\r\n");
+        HC05_Send(&hc05, "  EMERGENCY - Emergency stop\r\n");
+        HC05_Send(&hc05, "  LOGSTART  - Start SD card logging\r\n");
+        HC05_Send(&hc05, "  LOGSTOP   - Stop SD card logging\r\n");
+        HC05_Send(&hc05, "  LEDON     - Enable LED display\r\n");
+        HC05_Send(&hc05, "  LEDOFF    - Disable LED display\r\n");
+        HC05_Send(&hc05, "  STATUS    - Show system status\r\n");
+        HC05_Send(&hc05, "  HELP      - Show this help\r\n");
+    }
+    else {
+        HC05_Send(&hc05, "[TX]: ERR - Unknown command (type HELP)\r\n");
+    }
+
+    /* Send prompt */
+    HC05_Send(&hc05, "\r\n> ");
 }

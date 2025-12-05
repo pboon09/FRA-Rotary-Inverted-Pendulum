@@ -65,7 +65,10 @@ Core/Src/rip_config.o: ../Core/Src/rip_config.c ../Core/Inc/rip_config.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/support_functions.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/quaternion_math_functions.h \
  ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h \
- ../Core/Inc/MotorKalman.h
+ ../Core/Inc/MotorKalman.h ../Core/Inc/led_matrix.h ../Core/Inc/hc05.h \
+ ../Core/Inc/sd_logger.h ../Middlewares/Third_Party/FatFs/src/ff.h \
+ ../Middlewares/Third_Party/FatFs/src/integer.h ../FATFS/Target/ffconf.h \
+ ../Core/Inc/main.h ../Core/Inc/sd_spi.h
 ../Core/Inc/rip_config.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal.h:
@@ -139,3 +142,11 @@ Core/Src/rip_config.o: ../Core/Src/rip_config.c ../Core/Inc/rip_config.h \
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/quaternion_math_functions.h:
 ../Middlewares/Third_Party/ARM_CMSIS/Include/dsp/window_functions.h:
 ../Core/Inc/MotorKalman.h:
+../Core/Inc/led_matrix.h:
+../Core/Inc/hc05.h:
+../Core/Inc/sd_logger.h:
+../Middlewares/Third_Party/FatFs/src/ff.h:
+../Middlewares/Third_Party/FatFs/src/integer.h:
+../FATFS/Target/ffconf.h:
+../Core/Inc/main.h:
+../Core/Inc/sd_spi.h:

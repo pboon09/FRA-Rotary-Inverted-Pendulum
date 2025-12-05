@@ -1,0 +1,91 @@
+#include "sd_logger.h"
+#include "logger.h"
+#include <stdio.h>
+#include <string.h>
+
+void SD_Logger_Init(SD_Logger_Handle_t *hlogger)
+{
+    hlogger->is_open = 0;
+    hlogger->sample_count = 0;
+    memset(hlogger->filename, 0, sizeof(hlogger->filename));
+
+    /* Initialize FatFS using existing logger */
+    Logger_Init();
+}
+
+uint8_t SD_Logger_CreateFile(SD_Logger_Handle_t *hlogger, const char *filename)
+{
+    /* Close existing file if open */
+    if (hlogger->is_open) {
+        hlogger->is_open = 0;
+    }
+
+    /* Store filename */
+    strncpy(hlogger->filename, filename, sizeof(hlogger->filename) - 1);
+
+    /* Create empty file (will be opened for appending) */
+    uint8_t result = Logger_WriteString(filename, "");
+
+    if (result == 0) {
+        hlogger->is_open = 1;
+        hlogger->sample_count = 0;
+        return 1;
+    }
+
+    return 0;
+}
+
+void SD_Logger_Close(SD_Logger_Handle_t *hlogger)
+{
+    if (hlogger->is_open) {
+        hlogger->is_open = 0;
+    }
+}
+
+uint8_t SD_Logger_WriteHeader(SD_Logger_Handle_t *hlogger)
+{
+    if (!hlogger->is_open) return 0;
+
+    const char *header = "Sample,Alpha,Alpha_Dot,Theta,Theta_Dot";
+
+    uint8_t result = Logger_WriteLine(hlogger->filename, header);
+
+    return (result == 0) ? 1 : 0;
+}
+
+uint8_t SD_Logger_WriteData(SD_Logger_Handle_t *hlogger, float alpha, float alpha_dot, float theta, float theta_dot)
+{
+    if (!hlogger->is_open) return 0;
+
+    char buffer[128];
+
+    /* Format: Sample,Alpha,Alpha_Dot,Theta,Theta_Dot */
+    snprintf(buffer, sizeof(buffer), "%lu,%.6f,%.6f,%.6f,%.6f",
+             hlogger->sample_count,
+             alpha, alpha_dot, theta, theta_dot);
+
+    uint8_t result = Logger_WriteLine(hlogger->filename, buffer);
+
+    if (result == 0) {
+        hlogger->sample_count++;
+        return 1;
+    }
+
+    return 0;
+}
+
+void SD_Logger_Sync(SD_Logger_Handle_t *hlogger)
+{
+    /* Logger.c auto-syncs on each write, so this is a no-op */
+    (void)hlogger;
+}
+
+uint8_t SD_Logger_IsOpen(SD_Logger_Handle_t *hlogger)
+{
+    return hlogger->is_open;
+}
+
+uint32_t SD_Logger_GetSampleCount(SD_Logger_Handle_t *hlogger)
+{
+    return hlogger->sample_count;
+}
