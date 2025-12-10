@@ -6,8 +6,14 @@
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
-		<item key="selection" value="_Write"/>
+		<item key="selection" value="system_mode"/>
 		<list key="findhistory">
+			<item value="bt_dma_byte"/>
+			<item value="system_mode"/>
+			<item value="Draw"/>
+			<item value="pendulum_angle"/>
+			<item value="SDA"/>
+			<item value="DM163_SendByte"/>
 			<item value="_write"/>
 			<item value="Debu"/>
 			<item value="SD_CS_PIN"/>

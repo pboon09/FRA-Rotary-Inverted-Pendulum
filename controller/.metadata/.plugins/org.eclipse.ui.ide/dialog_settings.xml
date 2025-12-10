@@ -9,6 +9,7 @@
 		<item key="SmartImportRootWizardPage.STORE_NESTED_PROJECTS" value="true"/>
 		<item key="SmartImportRootWizardPage.STORE_CONFIGURE_NATURES" value="true"/>
 		<list key="org.eclipse.ui.internal.wizards.datatransfer.SmartImportRootWizardPage.knownSources">
+			<item value="C:\fibo\3rd year_1st semester\embedded\HC05_Test"/>
 			<item value="C:\fibo\3rd year_1st semester\kinematics\FRA-Rotary-Inverted-Pendulum-FRA333-Kinematics\firmware\invpendulum_uros"/>
 			<item value="C:\fibo\3rd year_1st semester\embedded\FRA-Rotary-Inverted-Pendulum\pin_selection"/>
 			<item value="C:\fibo\3rd year_1st semester\embedded\SDCard_Test"/>

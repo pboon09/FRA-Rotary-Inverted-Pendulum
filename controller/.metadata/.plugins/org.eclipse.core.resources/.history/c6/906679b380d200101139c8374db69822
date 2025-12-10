@@ -51,7 +51,7 @@ void config_begin() {
     LQR_Init(&lqr_ctrl, K_matlab, VOLTAGE_LIMIT);
 
     LED_Matrix_Init(&hmatrix);
-//    SD_Logger_Init(&sd_logger);
+    SD_Logger_Init(&sd_logger);
 
     HAL_TIM_Base_Start_IT(CONTROL_TIM);
 }

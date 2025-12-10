@@ -32,6 +32,10 @@ void HC05_SetCommandCallback(HC05_Handle_t *hhc05, HC05_CommandCallback_t callba
     hhc05->command_callback = callback;
 }
 
+/**
+ * @brief Start receiving data via DMA
+ * @param hhc05: Pointer to HC05_Handle_t structure
+ */
 void HC05_Start(HC05_Handle_t *hhc05)
 {
     HAL_UART_Receive_DMA(hhc05->huart, hhc05->rx_dma_byte, HC05_RX_DMA_SIZE);

@@ -1,6 +1,7 @@
 #include "rip_config.h"
 #include <string.h>
 #include <ctype.h>
+#include <stdio.h>
 
 MDXX motor;
 
@@ -51,7 +52,7 @@ void config_begin() {
     LQR_Init(&lqr_ctrl, K_matlab, VOLTAGE_LIMIT);
 
     LED_Matrix_Init(&hmatrix);
-//    SD_Logger_Init(&sd_logger);
+    SD_Logger_Init(&sd_logger);
 
     HAL_TIM_Base_Start_IT(CONTROL_TIM);
 }
@@ -59,18 +60,11 @@ void config_begin() {
 void config_begin_communication() {
     HC05_Init(&hc05, &huart3, 9600);
     HC05_SetCommandCallback(&hc05, HC05_CommandHandler);
-
-    /* Send welcome messages using blocking transmit (more reliable during init) */
-    const char *msg1 = "\r\n===== RIP Control System =====\r\n";
-    const char *msg2 = "Type HELP for commands\r\n";
-    const char *msg3 = "\r\n> ";
-
-    HAL_UART_Transmit(&huart3, (uint8_t*)msg1, strlen(msg1), 1000);
-    HAL_UART_Transmit(&huart3, (uint8_t*)msg2, strlen(msg2), 1000);
-    HAL_UART_Transmit(&huart3, (uint8_t*)msg3, strlen(msg3), 1000);
-
-    /* Now start DMA reception */
+    HC05_Send(&hc05, "\r\n===== RIP Control System =====\r\n");
+    HC05_Send(&hc05, "Type HELP for commands\r\n");
+    HC05_Send(&hc05, "\r\n> ");
     HC05_Start(&hc05);
+    HAL_UART_Receive_DMA(&huart3, bt_dma_byte, BT_RX_DMA_SIZE);
 }
 
 void HC05_CommandHandler(char *command) {
