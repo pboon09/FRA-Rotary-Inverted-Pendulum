@@ -1,23 +1,24 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "app_fatfs.h"
 #include "iwdg.h"
 #include "usart.h"
@@ -59,7 +60,7 @@ PendulumState state = STATE_WAIT_BUTTON;
 int kick_counter = 0;
 
 int debug, emer, released, led_counter = 0;
-uint16_t log_counter = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -111,36 +112,31 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_TIM1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_SPI2_Init();
   MX_USART3_UART_Init();
-  MX_IWDG_Init();
   if (MX_FATFS_Init() != APP_OK) {
     Error_Handler();
   }
   MX_LPUART1_UART_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
-  config_begin();
-  config_begin_communication();
+//	config_begin();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_IWDG_Refresh(&hiwdg);
-	  HC05_Process(&hc05);
-	  if (led_display_enabled && (state != STATE_WAIT_BUTTON)) {
-		  LED_Matrix_DrawPendulum(&hmatrix, alpha, LED_MATRIX_COLOR_WHITE);
-		  LED_Matrix_RefreshDisplay(&hmatrix, 5);  // Quick 5ms refresh
-	  }
-  }
+		HAL_IWDG_Refresh(&hiwdg);
+		emer = HAL_GPIO_ReadPin(emergency_GPIO_Port, emergency_Pin);
+	}
   /* USER CODE END 3 */
 }
 
@@ -208,8 +204,7 @@ static inline float wrap_2pi(float x) {
 	return x;
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim == &htim2) {
 		QEI_get_diff_count(&motor_encoder);
 		QEI_compute_data(&motor_encoder);
@@ -223,15 +218,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		alpha = wrap_2pi(pendulum_encoder.rads);
 		alpha_dot = FIR_process(&alpha_dot_filter, pendulum_encoder.radps);
 		theta = motor_encoder.rads;
-		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
+//		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
 		theta_dot = kf_update(&motor_filter, voltage_input, theta);
 
 		alpha_shifted = wrap_pi(alpha - M_PI);
-
-		if (logging_enabled && ++log_counter >= 10) {
-			SD_Logger_WriteData(&sd_logger, alpha, alpha_dot, theta, theta_dot);
-			log_counter = 0;
-		}
 
 		switch (state) {
 		case STATE_WAIT_BUTTON:
@@ -258,7 +248,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			break;
 		case STATE_KICK:
 			kick_counter++;
-			cmd_kick = (kick_counter < 250) ? 7000 : -7000;
+			cmd_kick = (kick_counter < 250) ? 6000 : -6000;
 
 			if (kick_counter < 500) {
 				MDXX_set_range(&motor, 2000, cmd_kick);
@@ -269,12 +259,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 			break;
 		case STATE_SWINGUP:
 			if (fabsf(alpha_shifted) < 0.25) {
-				cmd_energy = 0;
-				cmd_kick = 0;
+			    cmd_energy = 0;
+			    cmd_kick = 0;
 				state = STATE_LQR;
 			} else {
 				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
-				cmd_energy = (int) (cmd_energy_norm * 6500.0f);
+				cmd_energy = (int) (cmd_energy_norm * 6000.0f);
 				MDXX_set_range(&motor, 2000, cmd_energy);
 			}
 			break;
@@ -323,20 +313,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		released = 0;
 	}
 }
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart == &huart3) {
-        HC05_UART_RxCpltCallback(&hc05);
-    }
-}
-
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-{
-    if (huart == &huart3) {
-        HC05_UART_TxCpltCallback(&hc05);
-    }
-}
 /* USER CODE END 4 */
 
 /**
@@ -346,11 +322,10 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 

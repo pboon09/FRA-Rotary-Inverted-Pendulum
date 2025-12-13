@@ -1,4 +1,4 @@
-15:34:36 **** Incremental Build of configuration Debug for project HC05_Test ****
+23:39:11 **** Incremental Build of configuration Debug for project HC05_Test ****
 make -j12 all 
 arm-none-eabi-size  HC05_Test.elf 
    text	   data	    bss	    dec	    hex	filename
@@ -6,5 +6,5 @@ arm-none-eabi-size  HC05_Test.elf
 Finished building: default.size.stdout
  
 
-15:34:37 Build Finished. 0 errors, 0 warnings. (took 252ms)
+23:39:11 Build Finished. 0 errors, 0 warnings. (took 208ms)
 

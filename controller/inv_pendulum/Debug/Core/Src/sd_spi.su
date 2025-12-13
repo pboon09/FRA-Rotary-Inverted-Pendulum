@@ -1,0 +1,9 @@
+../Core/Src/sd_spi.c:20:20:SD_CS_LOW	8	static
+../Core/Src/sd_spi.c:24:20:SD_CS_HIGH	8	static
+../Core/Src/sd_spi.c:29:16:SD_SPI_Transfer	32	static
+../Core/Src/sd_spi.c:44:13:SD_SPI_SendDummy	24	static
+../Core/Src/sd_spi.c:51:16:SD_WaitReady	24	static
+../Core/Src/sd_spi.c:63:16:SD_SendCommand	24	static
+../Core/Src/sd_spi.c:97:9:SD_Init	32	static
+../Core/Src/sd_spi.c:234:9:SD_ReadBlock	32	static
+../Core/Src/sd_spi.c:276:9:SD_WriteBlock	24	static

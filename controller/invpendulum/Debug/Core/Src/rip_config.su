@@ -1,3 +1,4 @@
-../Core/Src/rip_config.c:38:6:config_begin	16	static
-../Core/Src/rip_config.c:59:6:config_begin_communication	24	static
-../Core/Src/rip_config.c:76:6:HC05_CommandHandler	64	static
+../Drivers/CMSIS/Include/core_cm4.h:1831:26:__NVIC_GetPriority	16	static
+../Core/Src/rip_config.c:45:6:config_begin	24	static
+../Core/Src/rip_config.c:133:6:config_begin_communication	24	static
+../Core/Src/rip_config.c:153:6:HC05_CommandHandler	64	static

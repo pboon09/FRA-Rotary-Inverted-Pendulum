@@ -1,0 +1,8 @@
+../Core/Src/lcd_display.c:40:13:LCD_ProtectedWrite	1
+../Core/Src/lcd_display.c:56:13:LCD_ProtectedStateWrite	1
+../Core/Src/lcd_display.c:71:19:LCD_Display_Init	4
+../Core/Src/lcd_display.c:143:6:LCD_Display_Update	11
+../Core/Src/lcd_display.c:198:9:LCD_Display_ShouldUpdate	3
+../Core/Src/lcd_display.c:205:6:LCD_Display_IncrementCounter	4
+../Core/Src/lcd_display.c:214:6:LCD_Display_SetUpdateRate	3
+../Core/Src/lcd_display.c:224:6:LCD_Display_Clear	3

@@ -11,7 +11,7 @@ typedef struct {
 } SD_Logger_Handle_t;
 
 /* Initialization */
-void SD_Logger_Init(SD_Logger_Handle_t *hlogger);
+HAL_StatusTypeDef SD_Logger_Init(SD_Logger_Handle_t *hlogger);
 uint8_t SD_Logger_CreateFile(SD_Logger_Handle_t *hlogger, const char *filename);
 void SD_Logger_Close(SD_Logger_Handle_t *hlogger);
 

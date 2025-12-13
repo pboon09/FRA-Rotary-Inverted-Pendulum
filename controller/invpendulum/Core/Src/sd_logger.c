@@ -11,7 +11,7 @@ static uint8_t fatfs_initialized = 0;
 
 extern void Debug_Printf(const char* format, ...);
 
-void SD_Logger_Init(SD_Logger_Handle_t *hlogger)
+HAL_StatusTypeDef SD_Logger_Init(SD_Logger_Handle_t *hlogger)
 {
     FRESULT res;
 
@@ -39,7 +39,7 @@ void SD_Logger_Init(SD_Logger_Handle_t *hlogger)
     if (disk_stat != 0) {
         Debug_Printf("  FAILED: Disk initialization error!\r\n");
         fatfs_initialized = 0;
-        return;
+        return HAL_ERROR;
     }
     Debug_Printf("  Disk initialized OK\r\n");
 
@@ -56,22 +56,23 @@ void SD_Logger_Init(SD_Logger_Handle_t *hlogger)
         case FR_DISK_ERR:
             Debug_Printf("(DISK_ERR - Low level I/O error)\r\n");
             fatfs_initialized = 0;
-            return;
+            return HAL_ERROR;
         case FR_NOT_READY:
             Debug_Printf("(NOT_READY - Drive not ready)\r\n");
             fatfs_initialized = 0;
-            return;
+            return HAL_ERROR;
         case FR_NO_FILESYSTEM:
             Debug_Printf("(NO_FILESYSTEM - Not FAT32)\r\n");
             fatfs_initialized = 0;
-            return;
+            return HAL_ERROR;
         default:
             Debug_Printf("(Error %d)\r\n", res);
             fatfs_initialized = 0;
-            return;
+            return HAL_ERROR;
     }
 
     Debug_Printf("SD_Logger_Init: SUCCESS!\r\n");
+    return HAL_OK;
 }
 
 uint8_t SD_Logger_CreateFile(SD_Logger_Handle_t *hlogger, const char *filename)

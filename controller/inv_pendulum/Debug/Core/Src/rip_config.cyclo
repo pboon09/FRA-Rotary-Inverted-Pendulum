@@ -1,0 +1,3 @@
+../Core/Src/rip_config.c:45:6:config_begin	2
+../Core/Src/rip_config.c:117:6:config_begin_communication	2
+../Core/Src/rip_config.c:137:6:HC05_CommandHandler	1

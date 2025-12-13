@@ -6,20 +6,26 @@
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
-		<item key="selection" value="system_mode"/>
+		<item key="selection" value="MOTOR_VOLTAGE_LIMIT"/>
 		<list key="findhistory">
+			<item value="MOTOR_VOLTAGE_LIMIT"/>
+			<item value="period"/>
+			<item value="LCD_Display_Update"/>
+			<item value="Y_HEADER"/>
+			<item value="Pendulum_Update_Data"/>
+			<item value="Drawing ARM"/>
+			<item value="Debug_Printf"/>
+			<item value="led_display_enabled"/>
+			<item value="led_matrix_enabled"/>
+			<item value="LED_Matrix_Init"/>
 			<item value="bt_dma_byte"/>
 			<item value="system_mode"/>
 			<item value="Draw"/>
 			<item value="pendulum_angle"/>
 			<item value="SDA"/>
-			<item value="DM163_SendByte"/>
-			<item value="_write"/>
-			<item value="Debu"/>
-			<item value="SD_CS_PIN"/>
-			<item value="SD_CS_PORT"/>
 		</list>
 		<list key="replacehistory">
+			<item value="led_display_enabled"/>
 			<item value="SD_CS_Pin"/>
 			<item value="SD_CS_GPIO_Port"/>
 		</list>
