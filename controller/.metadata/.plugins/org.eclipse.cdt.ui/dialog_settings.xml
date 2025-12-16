@@ -20,4 +20,8 @@
 	<section name="OptionalMessageDialog.hide.">
 		<item key="askReindex.detail" value="0"/>
 	</section>
+	<section name="org.eclipse.cdt.ui.text.hover.CMacroExpansionExploration.internal">
+		<item key="size.width" value="1258"/>
+		<item key="size.height" value="590"/>
+	</section>
 </section>

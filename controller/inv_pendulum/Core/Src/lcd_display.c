@@ -4,12 +4,13 @@
 #include "tft.h"
 #include "functions.h"
 #include <stdio.h>
+#include <string.h>
 
 extern void Debug_Printf(const char* format, ...);
 
 /* External variables from main.c */
 extern float alpha, alpha_dot, theta, theta_dot;
-extern PendulumState state;
+extern volatile PendulumState state;
 
 /* Colors */
 #define COLOR_BG            BLACK
@@ -34,36 +35,17 @@ extern PendulumState state;
 #define Y_PEN_VEL_V         227
 #define Y_STATE_LABEL       250
 
-/**
- * @brief  Protected text write - disables interrupts during write
- */
-static void LCD_ProtectedWrite(uint16_t y_pos, uint16_t color, const char *text)
-{
-    uint32_t primask = __get_PRIMASK();  // Save interrupt state
-    __disable_irq();                      // Disable interrupts
+/* Display data snapshot - updated from ISR, read from main loop */
+typedef struct {
+    float alpha_snap;
+    float alpha_dot_snap;
+    float theta_snap;
+    float theta_dot_snap;
+    PendulumState state_snap;
+    uint8_t data_ready;
+} LCD_Snapshot_t;
 
-    setTextSize(1);
-    setTextColor(color);
-    setCursor(10, y_pos);
-    printstr((uint8_t*)text);
-
-    __set_PRIMASK(primask);              // Restore interrupt state
-}
-
-/**
- * @brief  Protected state write - disables interrupts during write
- */
-static void LCD_ProtectedStateWrite(uint16_t color, const char *text)
-{
-    uint32_t primask = __get_PRIMASK();
-    __disable_irq();
-
-    setCursor(0, Y_STATE_LABEL);
-    setTextColor(color);
-    printstr((uint8_t*)text);
-
-    __set_PRIMASK(primask);
-}
+static volatile LCD_Snapshot_t lcd_snapshot = {0};
 
 /**
  * @brief  Initialize LCD
@@ -90,12 +72,9 @@ HAL_StatusTypeDef LCD_Display_Init(LCD_Handle_t *hlcd)
     Debug_Printf("LCD_Init: LCD ID = 0x%04X\r\n", hlcd->lcd_id);
 
     if (hlcd->lcd_id == 0x0000 || hlcd->lcd_id == 0xFFFF) {
-        Debug_Printf("LCD_Init: FAILED\r\n");
+        Debug_Printf("LCD_Init: FAILED - Invalid ID\r\n");
         return HAL_ERROR;
     }
-
-    /* Disable interrupts during init */
-    __disable_irq();
 
     /* Initialize TFT */
     tft_init(hlcd->lcd_id);
@@ -128,17 +107,32 @@ HAL_StatusTypeDef LCD_Display_Init(LCD_Handle_t *hlcd)
     sprintf(buffer, "STATE:");
     printnewtstr(Y_STATE_LABEL, COLOR_SECTION, &mono12x7bold, 1, (uint8_t*)buffer);
 
-    __enable_irq();  // Re-enable interrupts
-
     hlcd->initialized = 1;
-    HAL_Delay(100);
 
     Debug_Printf("LCD_Init: SUCCESS!\r\n");
     return HAL_OK;
 }
 
 /**
- * @brief  Update display with interrupt protection
+ * @brief  Snapshot data from ISR - FAST, no LCD access
+ */
+void LCD_Display_SnapshotData(LCD_Handle_t *hlcd)
+{
+    if (hlcd == NULL || !hlcd->initialized) {
+        return;
+    }
+
+    /* Quick snapshot - called from ISR */
+    lcd_snapshot.alpha_snap = alpha;
+    lcd_snapshot.alpha_dot_snap = alpha_dot;
+    lcd_snapshot.theta_snap = theta;
+    lcd_snapshot.theta_dot_snap = theta_dot;
+    lcd_snapshot.state_snap = state;
+    lcd_snapshot.data_ready = 1;
+}
+
+/**
+ * @brief  Update display from main loop - SLOW, uses snapshot
  */
 void LCD_Display_Update(LCD_Handle_t *hlcd)
 {
@@ -149,69 +143,105 @@ void LCD_Display_Update(LCD_Handle_t *hlcd)
         return;
     }
 
+    if (!lcd_snapshot.data_ready) {
+        return;
+    }
+
+    /* Mark as consumed */
+    lcd_snapshot.data_ready = 0;
+
+    /* Use snapshot data - no need to disable interrupts */
+    float alpha_val = lcd_snapshot.alpha_snap;
+    float alpha_dot_val = lcd_snapshot.alpha_dot_snap;
+    float theta_val = lcd_snapshot.theta_snap;
+    float theta_dot_val = lcd_snapshot.theta_dot_snap;
+    PendulumState state_val = lcd_snapshot.state_snap;
+
     /* ARM POSITION */
     fillRect(0, Y_ARM_POS_V - 15, 240, 20, COLOR_BG);
-    int_part = (int)theta;
-    frac_part = (int)((theta - int_part) * 100);
+    int_part = (int)theta_val;
+    frac_part = (int)((theta_val - int_part) * 100);
     if (frac_part < 0) frac_part = -frac_part;
     sprintf(buffer, "%d.%02d rad", int_part, frac_part);
-    LCD_ProtectedWrite(Y_ARM_POS_V, COLOR_VALUE, buffer);
+    setTextSize(1);
+    setTextColor(COLOR_VALUE);
+    setCursor(10, Y_ARM_POS_V);
+    printstr((uint8_t*)buffer);
 
     /* ARM VELOCITY */
     fillRect(0, Y_ARM_VEL_V - 15, 240, 20, COLOR_BG);
-    int_part = (int)theta_dot;
-    frac_part = (int)((theta_dot - int_part) * 100);
+    int_part = (int)theta_dot_val;
+    frac_part = (int)((theta_dot_val - int_part) * 100);
     if (frac_part < 0) frac_part = -frac_part;
     sprintf(buffer, "%d.%02d r/s", int_part, frac_part);
-    LCD_ProtectedWrite(Y_ARM_VEL_V, COLOR_VALUE, buffer);
+    setTextSize(1);
+    setTextColor(COLOR_VALUE);
+    setCursor(10, Y_ARM_VEL_V);
+    printstr((uint8_t*)buffer);
 
     /* PENDULUM POSITION */
     fillRect(0, Y_PEN_POS_V - 15, 240, 20, COLOR_BG);
-    int_part = (int)alpha;
-    frac_part = (int)((alpha - int_part) * 100);
+    int_part = (int)alpha_val;
+    frac_part = (int)((alpha_val - int_part) * 100);
     if (frac_part < 0) frac_part = -frac_part;
     sprintf(buffer, "%d.%02d rad", int_part, frac_part);
-    LCD_ProtectedWrite(Y_PEN_POS_V, COLOR_VALUE, buffer);
+    setTextSize(1);
+    setTextColor(COLOR_VALUE);
+    setCursor(10, Y_PEN_POS_V);
+    printstr((uint8_t*)buffer);
 
     /* PENDULUM VELOCITY */
     fillRect(0, Y_PEN_VEL_V - 15, 240, 20, COLOR_BG);
-    int_part = (int)alpha_dot;
-    frac_part = (int)((alpha_dot - int_part) * 100);
+    int_part = (int)alpha_dot_val;
+    frac_part = (int)((alpha_dot_val - int_part) * 100);
     if (frac_part < 0) frac_part = -frac_part;
     sprintf(buffer, "%d.%02d r/s", int_part, frac_part);
-    LCD_ProtectedWrite(Y_PEN_VEL_V, COLOR_VALUE, buffer);
+    setTextSize(1);
+    setTextColor(COLOR_VALUE);
+    setCursor(10, Y_PEN_VEL_V);
+    printstr((uint8_t*)buffer);
 
     /* STATE */
     fillRect(0, Y_STATE_LABEL - 15, 240, 20, COLOR_BG);
+    setCursor(0, Y_STATE_LABEL);
 
-    if (state == STATE_LQR) {
-        LCD_ProtectedStateWrite(COLOR_STATE_STAB, "STATE:STABILIZE");
-    } else if (state == STATE_KICK || state == STATE_SWINGUP) {
-        LCD_ProtectedStateWrite(COLOR_STATE_SWING, "STATE:SWING UP");
-    } else if (state == STATE_EMERGENCY) {
-        LCD_ProtectedStateWrite(RED, "STATE:EMERGENCY");
+    if (state_val == STATE_LQR) {
+        setTextColor(COLOR_STATE_STAB);
+        printstr((uint8_t*)"STATE:STABILIZE");
+    } else if (state_val == STATE_KICK || state_val == STATE_SWINGUP) {
+        setTextColor(COLOR_STATE_SWING);
+        printstr((uint8_t*)"STATE:SWING UP");
+    } else if (state_val == STATE_EMERGENCY) {
+        setTextColor(RED);
+        printstr((uint8_t*)"STATE:EMERGENCY");
     } else {
-        LCD_ProtectedStateWrite(YELLOW, "STATE:WAITING");
+        setTextColor(YELLOW);
+        printstr((uint8_t*)"STATE:WAITING");
     }
 }
 
-uint8_t LCD_Display_ShouldUpdate(LCD_Handle_t *hlcd) {
+uint8_t LCD_Display_ShouldUpdate(LCD_Handle_t *hlcd)
+{
     if (hlcd == NULL || !hlcd->initialized) {
         return 0;
     }
-    return (hlcd->update_counter == 0);
+    return (hlcd->update_counter == 0 && lcd_snapshot.data_ready);
 }
 
-void LCD_Display_IncrementCounter(LCD_Handle_t *hlcd) {
+void LCD_Display_IncrementCounter(LCD_Handle_t *hlcd)
+{
     if (hlcd == NULL || !hlcd->initialized) {
         return;
     }
     if (++hlcd->update_counter >= hlcd->update_divider) {
         hlcd->update_counter = 0;
+        /* Trigger snapshot on counter reset */
+        LCD_Display_SnapshotData(hlcd);
     }
 }
 
-void LCD_Display_SetUpdateRate(LCD_Handle_t *hlcd, uint16_t divider) {
+void LCD_Display_SetUpdateRate(LCD_Handle_t *hlcd, uint16_t divider)
+{
     if (hlcd == NULL) {
         return;
     }
@@ -221,11 +251,19 @@ void LCD_Display_SetUpdateRate(LCD_Handle_t *hlcd, uint16_t divider) {
     }
 }
 
-void LCD_Display_Clear(LCD_Handle_t *hlcd) {
+void LCD_Display_Clear(LCD_Handle_t *hlcd)
+{
     if (hlcd == NULL || !hlcd->initialized) {
         return;
     }
-    __disable_irq();
     fillScreen(COLOR_BG);
-    __enable_irq();
+    hlcd->initialized = 0;
+}
+
+uint8_t LCD_Display_IsInitialized(LCD_Handle_t *hlcd)
+{
+    if (hlcd == NULL) {
+        return 0;
+    }
+    return hlcd->initialized;
 }

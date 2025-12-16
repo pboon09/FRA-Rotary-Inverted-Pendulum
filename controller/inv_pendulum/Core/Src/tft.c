@@ -109,6 +109,7 @@ void PIN_OUTPUT (GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 #define WR_ACTIVE2  {WR_ACTIVE; WR_ACTIVE;}
 #define WR_ACTIVE4  {WR_ACTIVE2; WR_ACTIVE2;}
 #define WR_ACTIVE8  {WR_ACTIVE4; WR_ACTIVE4;}
+#define WR_ACTIVE16 {WR_ACTIVE8; WR_ACTIVE8;}
 #define RD_ACTIVE2  {RD_ACTIVE; RD_ACTIVE;}
 #define RD_ACTIVE4  {RD_ACTIVE2; RD_ACTIVE2;}
 #define RD_ACTIVE8  {RD_ACTIVE4; RD_ACTIVE4;}
@@ -210,7 +211,7 @@ uint8_t _cp437    = false;
 uint8_t rotation  = 0;
 
 #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
-#define pgm_read_word(addr) (*(const unsigned short *)(addr))
+#define pgm_read_word(addr) (*(const unsigned int *)(addr))
 #define pgm_read_pointer(addr) ((void *)pgm_read_word(addr))
 
 #define min(a, b) (((a) < (b)) ? (a) : (b))

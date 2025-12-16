@@ -1,8 +1,8 @@
-../Core/Src/lcd_display.c:40:13:LCD_ProtectedWrite	32	static,ignoring_inline_asm
-../Core/Src/lcd_display.c:56:13:LCD_ProtectedStateWrite	32	static,ignoring_inline_asm
-../Core/Src/lcd_display.c:71:19:LCD_Display_Init	56	static,ignoring_inline_asm
-../Core/Src/lcd_display.c:143:6:LCD_Display_Update	64	static
-../Core/Src/lcd_display.c:198:9:LCD_Display_ShouldUpdate	16	static
-../Core/Src/lcd_display.c:205:6:LCD_Display_IncrementCounter	16	static
-../Core/Src/lcd_display.c:214:6:LCD_Display_SetUpdateRate	16	static
-../Core/Src/lcd_display.c:224:6:LCD_Display_Clear	16	static,ignoring_inline_asm
+../Core/Src/lcd_display.c:53:19:LCD_Display_Init	56	static
+../Core/Src/lcd_display.c:119:6:LCD_Display_SnapshotData	16	static
+../Core/Src/lcd_display.c:137:6:LCD_Display_Update	88	static
+../Core/Src/lcd_display.c:223:9:LCD_Display_ShouldUpdate	16	static
+../Core/Src/lcd_display.c:231:6:LCD_Display_IncrementCounter	16	static
+../Core/Src/lcd_display.c:243:6:LCD_Display_SetUpdateRate	16	static
+../Core/Src/lcd_display.c:254:6:LCD_Display_Clear	16	static
+../Core/Src/lcd_display.c:263:9:LCD_Display_IsInitialized	16	static

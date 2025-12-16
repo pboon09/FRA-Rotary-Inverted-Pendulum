@@ -18,5 +18,6 @@ uint8_t LCD_Display_ShouldUpdate(LCD_Handle_t *hlcd);
 void LCD_Display_IncrementCounter(LCD_Handle_t *hlcd);
 void LCD_Display_SetUpdateRate(LCD_Handle_t *hlcd, uint16_t divider);
 void LCD_Display_Clear(LCD_Handle_t *hlcd);
+uint8_t LCD_Display_IsInitialized(LCD_Handle_t *hlcd);
 
 #endif /* LCD_DISPLAY_H */

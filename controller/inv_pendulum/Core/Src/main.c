@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2025 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2025 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -22,6 +22,7 @@
 #include "app_fatfs.h"
 #include "iwdg.h"
 #include "usart.h"
+#include "rtc.h"
 #include "spi.h"
 #include "tim.h"
 #include "gpio.h"
@@ -29,6 +30,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "rip_config.h"
+#include "user_setting.h"
+#include "fonts.h"
+#include "tft.h"
+#include "functions.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdarg.h>
 /* USER CODE END Includes */
@@ -56,10 +62,14 @@ int total_cmd, cmd_energy, cmd_lqr, cmd_kick;
 
 float alpha, alpha_shifted, alpha_dot, theta, theta_dot, voltage_input;
 
-PendulumState state = STATE_WAIT_BUTTON;
+volatile PendulumState state = STATE_WAIT_BUTTON;
 int kick_counter = 0;
 
-int debug, emer, released, led_counter = 0;
+int debug, emer, released = 0;
+static uint32_t last_log_time = 0;
+
+RTC_TimeTypeDef current_time_rtc;
+RTC_DateTypeDef current_date_rtc;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,19 +77,23 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 static inline float wrap_pi(float x);
 static inline float wrap_2pi(float x);
+void Pendulum_Display_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void Debug_Printf(const char* format, ...) {
-    char buffer[256];
-    va_list args;
-    va_start(args, format);
-    int len = vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
+void Debug_Printf(const char *format, ...) {
+	char buffer1[128];
+	va_list args;
+	va_start(args, format);
+	int len = vsnprintf(buffer1, sizeof(buffer1), format, args);
+	va_end(args);
 
-    HAL_UART_Transmit(&hlpuart1, (uint8_t*)buffer, len, 1000);
+	if (len > 0 && len < sizeof(buffer1)) {
+		HAL_UART_Transmit(&hlpuart1, (uint8_t*) buffer1, len, 100);
+	}
 }
+
 /* USER CODE END 0 */
 
 /**
@@ -96,9 +110,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-
-
-	HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -124,34 +136,62 @@ int main(void)
     Error_Handler();
   }
   MX_LPUART1_UART_Init();
+  MX_TIM6_Init();
   MX_IWDG_Init();
+  MX_RTC_Init();
   /* USER CODE BEGIN 2 */
-  config_begin();
-  config_begin_communication();
+	config_begin();
+	config_begin_communication();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//	  HAL_IWDG_Refresh(&hiwdg);
+		HAL_IWDG_Refresh(&hiwdg);
+		emer = HAL_GPIO_ReadPin(emergency_GPIO_Port, emergency_Pin);
 
-	  if (bluetooth_enabled) {
-		  HC05_Process(&hc05);
-	  }
+		if (bluetooth_enabled) {
+			HC05_Process(&hc05);
+		}
 
-	  if (led_matrix_enabled) {
-		  LED_Matrix_DrawPendulum(&hmatrix, alpha, LED_MATRIX_COLOR_WHITE);
-		  LED_Matrix_RefreshDisplay(&hmatrix, 5);
-	  }
+	    if (lcd_display_enabled && LCD_Display_ShouldUpdate(&hlcd)) {
+	        LCD_Display_Update(&hlcd);
+	    }
 
-//	  if (lcd_display_enabled && LCD_Display_ShouldUpdate(&hlcd)) {
-//		  LCD_Display_Update(&hlcd);
-//	  }
-  }
+	    /* SD LOGGING with RTC */
+	    if (logging_enabled) {
+	        uint32_t current_time = HAL_GetTick();
+
+	        if ((current_time - last_log_time) >= 100) {  // 10 Hz
+	            last_log_time = current_time;
+
+	            /* READ RTC TIME AND DATE - THIS WAS MISSING! */
+	            RTC_TimeTypeDef rtc_time;
+	            RTC_DateTypeDef rtc_date;
+	            HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
+	            HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
+
+	            /* Now write with actual RTC values */
+	            SD_Logger_WriteDataWithState(&sd_logger,
+	                                        &rtc_time,
+	                                        &rtc_date,
+	                                        state,
+	                                        alpha, alpha_dot,
+	                                        theta, theta_dot);
+	        }
+	    }
+
+        if (sd_logger_enabled && logging_enabled) {
+            if (SD_Logger_ShouldFlush(&sd_logger)) {
+                SD_Logger_FlushBuffer(&sd_logger);
+            }
+        }
+
+
+	}
   /* USER CODE END 3 */
 }
 
@@ -168,16 +208,22 @@ void SystemClock_Config(void)
   */
   HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1_BOOST);
 
+  /** Configure LSE Drive Capability
+  */
+  HAL_PWR_EnableBkUpAccess();
+  __HAL_RCC_LSEDRIVE_CONFIG(RCC_LSEDRIVE_LOW);
+
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE
+                              |RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.LSEState = RCC_LSE_ON;
   RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV4;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = RCC_PLLM_DIV6;
   RCC_OscInitStruct.PLL.PLLN = 85;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
@@ -233,22 +279,28 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 		alpha = wrap_2pi(pendulum_encoder.rads);
 		alpha_dot = FIR_process(&alpha_dot_filter, pendulum_encoder.radps);
 		theta = motor_encoder.rads;
-//		theta_dot = FIR_process(&theta_dot_filter, motor_encoder.radps);
 		theta_dot = kf_update(&motor_filter, voltage_input, theta);
 
 		alpha_shifted = wrap_pi(alpha - M_PI);
 
-		switch (state) {
+        if (led_matrix_enabled && hmatrix.is_initialized) {
+        	LED_Matrix_DrawPendulum(&hmatrix, alpha, LED_MATRIX_COLOR_WHITE);
+        	LED_Matrix_RefreshISR(&hmatrix);
+        }
+
+        if (lcd_display_enabled) {
+            LCD_Display_IncrementCounter(&hlcd);
+        }
+
+		PendulumState current_state = state;
+
+		switch (current_state) {
 		case STATE_WAIT_BUTTON:
 			if (emer) {
 				state = STATE_EMERGENCY;
 			}
 
 			cmd_lqr = 0;
-			if (++led_counter >= 100) {
-				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-				led_counter = 0;
-			}
 			if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
 				kick_counter = 0;
 				state = STATE_KICK;
@@ -274,8 +326,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			break;
 		case STATE_SWINGUP:
 			if (fabsf(alpha_shifted) < 0.25) {
-			    cmd_energy = 0;
-			    cmd_kick = 0;
+				cmd_energy = 0;
+				cmd_kick = 0;
 				state = STATE_LQR;
 			} else {
 				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
@@ -313,7 +365,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 					&& HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
 				state = STATE_WAIT_BUTTON;
 				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-				led_counter = 0;
 				released = 0;
 				debug = 0;
 			}
@@ -328,6 +379,24 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 		released = 0;
 	}
 }
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	if (huart == &huart3) {
+		HC05_UART_RxCpltCallback(&hc05);
+	}
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+	if (huart == &huart3) {
+		HC05_UART_TxCpltCallback(&hc05);
+	}
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+	if (huart == &huart3) {
+		HC05_UART_ErrorCallback(&hc05);
+	}
+}
 /* USER CODE END 4 */
 
 /**
@@ -337,11 +406,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 

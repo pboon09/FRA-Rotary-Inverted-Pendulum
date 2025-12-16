@@ -8,15 +8,12 @@
 #include "sd_spi.h"
 #include "main.h"
 
-// External SPI handle - define this in main.c
 extern SPI_HandleTypeDef hspi2;
 
 extern void Debug_Printf(const char* format, ...);
 
-
 static uint8_t sd_card_type = SD_TYPE_UNKNOWN;
 
-// Inline functions for CS control
 static inline void SD_CS_LOW(void) {
     HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET);
 }
@@ -25,29 +22,25 @@ static inline void SD_CS_HIGH(void) {
     HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET);
 }
 
-// SPI transfer function with timeout
 static uint8_t SD_SPI_Transfer(uint8_t data) {
     uint8_t rxData = 0xFF;
     HAL_StatusTypeDef status;
 
-    status = HAL_SPI_TransmitReceive(&hspi2, &data, &rxData, 1, 100); // 100ms timeout
+    status = HAL_SPI_TransmitReceive(&hspi2, &data, &rxData, 1, 100);
 
     if (status != HAL_OK) {
-        // SPI communication failed
         return 0xFF;
     }
 
     return rxData;
 }
 
-// Send dummy bytes
 static void SD_SPI_SendDummy(uint16_t count) {
     for (uint16_t i = 0; i < count; i++) {
         SD_SPI_Transfer(0xFF);
     }
 }
 
-// Wait for card ready
 static uint8_t SD_WaitReady(uint32_t timeout_ms) {
     uint32_t start = HAL_GetTick();
 
@@ -59,30 +52,25 @@ static uint8_t SD_WaitReady(uint32_t timeout_ms) {
     return SD_TIMEOUT;
 }
 
-// Send command to SD card
 static uint8_t SD_SendCommand(uint8_t cmd, uint32_t arg) {
     uint8_t response;
     uint16_t retry = 0;
 
-    // Wait for card ready
     if (SD_WaitReady(500) != SD_SUCCESS) {
         return 0xFF;
     }
 
-    // Send command packet
-    SD_SPI_Transfer(0x40 | cmd);           // Command index with start bits
-    SD_SPI_Transfer((uint8_t)(arg >> 24)); // Argument[31:24]
-    SD_SPI_Transfer((uint8_t)(arg >> 16)); // Argument[23:16]
-    SD_SPI_Transfer((uint8_t)(arg >> 8));  // Argument[15:8]
-    SD_SPI_Transfer((uint8_t)arg);         // Argument[7:0]
+    SD_SPI_Transfer(0x40 | cmd);
+    SD_SPI_Transfer((uint8_t)(arg >> 24));
+    SD_SPI_Transfer((uint8_t)(arg >> 16));
+    SD_SPI_Transfer((uint8_t)(arg >> 8));
+    SD_SPI_Transfer((uint8_t)arg);
 
-    // CRC (only matters for CMD0 and CMD8)
-    uint8_t crc = 0x01; // Default CRC
-    if (cmd == CMD0) crc = 0x95;      // Valid CRC for CMD0
-    if (cmd == CMD8) crc = 0x87;      // Valid CRC for CMD8
+    uint8_t crc = 0x01;
+    if (cmd == CMD0) crc = 0x95;
+    if (cmd == CMD8) crc = 0x87;
     SD_SPI_Transfer(crc);
 
-    // Wait for response (R1 format: 0xxxxxxx)
     for (retry = 0; retry < 10; retry++) {
         response = SD_SPI_Transfer(0xFF);
         if (!(response & 0x80)) {
@@ -90,45 +78,39 @@ static uint8_t SD_SendCommand(uint8_t cmd, uint32_t arg) {
         }
     }
 
-    return 0xFF; // Timeout
+    return 0xFF;
 }
 
-// Initialize SD card
 uint8_t SD_Init(void) {
     uint8_t response;
     uint32_t retry;
 
     Debug_Printf("\r\n=== SD_Init START ===\r\n");
 
-    // Power-up delay
     Debug_Printf("Step 1: Power-up delay...\r\n");
     HAL_Delay(10);
     Debug_Printf("  OK\r\n");
 
-    // Deselect card
     Debug_Printf("Step 2: Set CS HIGH...\r\n");
     SD_CS_HIGH();
     Debug_Printf("  OK\r\n");
 
-    // Send 80+ clock pulses with CS high
     Debug_Printf("Step 3: Sending dummy clocks...\r\n");
     SD_SPI_SendDummy(10);
     Debug_Printf("  OK (sent 10 bytes)\r\n");
 
-    // Select card
     Debug_Printf("Step 4: Set CS LOW...\r\n");
     SD_CS_LOW();
     HAL_Delay(1);
     Debug_Printf("  OK\r\n");
 
-    // Send CMD0: GO_IDLE_STATE
     Debug_Printf("Step 5: Sending CMD0 (GO_IDLE_STATE)...\r\n");
     response = SD_SendCommand(CMD0, 0);
     Debug_Printf("  Response: 0x%02X ", response);
     if (response == 0x01) {
-        Debug_Printf("✓ GOOD (idle state)\r\n");
+        Debug_Printf("OK (idle state)\r\n");
     } else if (response == 0xFF) {
-        Debug_Printf("✗ FAIL (no response)\r\n");
+        Debug_Printf("FAIL (no response)\r\n");
         Debug_Printf("  Possible causes:\r\n");
         Debug_Printf("    - SD card not inserted\r\n");
         Debug_Printf("    - Wrong wiring (MOSI/MISO/SCK/CS)\r\n");
@@ -137,36 +119,29 @@ uint8_t SD_Init(void) {
         SD_CS_HIGH();
         return SD_INIT_ERROR;
     } else {
-        Debug_Printf("✗ FAIL (unexpected: 0x%02X)\r\n", response);
+        Debug_Printf("FAIL (unexpected: 0x%02X)\r\n", response);
         SD_CS_HIGH();
         return SD_INIT_ERROR;
     }
 
-    // Send CMD8: SEND_IF_COND (check voltage range and card version)
     Debug_Printf("Step 6: Sending CMD8 (SEND_IF_COND)...\r\n");
     response = SD_SendCommand(CMD8, 0x1AA);
     Debug_Printf("  Response: 0x%02X\r\n", response);
 
     if (response == 0x01) {
-    	Debug_Printf("  Card type: SD Ver2.x\r\n");
-        // SD Ver2.x
-        // Read 32-bit response
+        Debug_Printf("  Card type: SD Ver2.x\r\n");
         uint8_t ocr[4];
         for (int i = 0; i < 4; i++) {
             ocr[i] = SD_SPI_Transfer(0xFF);
         }
 
-        // Check voltage range
         if (ocr[2] == 0x01 && ocr[3] == 0xAA) {
-            // Initialize card with ACMD41
-        	Debug_Printf("Step 7: Sending ACMD41 (waiting for ready)...\r\n");
-        	retry = 0;
+            Debug_Printf("Step 7: Sending ACMD41 (waiting for ready)...\r\n");
+            retry = 0;
             do {
-                // Send CMD55 before ACMD41
                 response = SD_SendCommand(CMD55, 0);
                 if (response > 1) break;
 
-                // Send ACMD41 with HCS bit
                 response = SD_SendCommand(ACMD41, 0x40000000);
 
                 HAL_Delay(1);
@@ -178,7 +153,6 @@ uint8_t SD_Init(void) {
                 return SD_TIMEOUT;
             }
 
-            // Read OCR to check CCS bit
             Debug_Printf("Step 8: Reading OCR (CMD58)...\r\n");
             response = SD_SendCommand(CMD58, 0);
             if (response == 0x00) {
@@ -187,7 +161,6 @@ uint8_t SD_Init(void) {
                     ocr_reg[i] = SD_SPI_Transfer(0xFF);
                 }
 
-                // Check CCS bit (bit 30)
                 if (ocr_reg[0] & 0x40) {
                     sd_card_type = SD_TYPE_SDHC;
                 } else {
@@ -196,10 +169,8 @@ uint8_t SD_Init(void) {
             }
         }
     } else {
-        // SD Ver1.x or MMC
         sd_card_type = SD_TYPE_V1;
 
-        // Initialize with ACMD41
         retry = 0;
         do {
             response = SD_SendCommand(CMD55, 0);
@@ -217,7 +188,6 @@ uint8_t SD_Init(void) {
         }
     }
 
-    // Set block size to 512 bytes
     response = SD_SendCommand(CMD16, 512);
     if (response != 0x00) {
         SD_CS_HIGH();
@@ -225,30 +195,26 @@ uint8_t SD_Init(void) {
     }
 
     SD_CS_HIGH();
-    SD_SPI_Transfer(0xFF); // Extra dummy byte
+    SD_SPI_Transfer(0xFF);
 
     return SD_SUCCESS;
 }
 
-// Read single block (512 bytes)
 uint8_t SD_ReadBlock(uint32_t blockAddr, uint8_t *buffer) {
     uint8_t response;
 
-    // For non-SDHC cards, convert block address to byte address
     if (sd_card_type != SD_TYPE_SDHC) {
         blockAddr *= 512;
     }
 
     SD_CS_LOW();
 
-    // Send CMD17: READ_SINGLE_BLOCK
     response = SD_SendCommand(CMD17, blockAddr);
     if (response != 0x00) {
         SD_CS_HIGH();
         return response;
     }
 
-    // Wait for data token (0xFE)
     uint16_t timeout = 0;
     while (SD_SPI_Transfer(0xFF) != 0xFE) {
         if (++timeout > 50000) {
@@ -257,66 +223,56 @@ uint8_t SD_ReadBlock(uint32_t blockAddr, uint8_t *buffer) {
         }
     }
 
-    // Read 512 bytes of data
     for (uint16_t i = 0; i < 512; i++) {
         buffer[i] = SD_SPI_Transfer(0xFF);
     }
 
-    // Read 16-bit CRC (we ignore it in SPI mode)
     SD_SPI_Transfer(0xFF);
     SD_SPI_Transfer(0xFF);
 
     SD_CS_HIGH();
-    SD_SPI_Transfer(0xFF); // Extra dummy byte
+    SD_SPI_Transfer(0xFF);
 
     return SD_SUCCESS;
 }
 
-// Write single block (512 bytes)
 uint8_t SD_WriteBlock(uint32_t blockAddr, const uint8_t *buffer) {
     uint8_t response;
 
-    // For non-SDHC cards, convert block address to byte address
     if (sd_card_type != SD_TYPE_SDHC) {
         blockAddr *= 512;
     }
 
     SD_CS_LOW();
 
-    // Send CMD24: WRITE_BLOCK
     response = SD_SendCommand(CMD24, blockAddr);
     if (response != 0x00) {
         SD_CS_HIGH();
         return response;
     }
 
-    // Send data token
     SD_SPI_Transfer(0xFE);
 
-    // Write 512 bytes of data
     for (uint16_t i = 0; i < 512; i++) {
         SD_SPI_Transfer(buffer[i]);
     }
 
-    // Send dummy CRC
     SD_SPI_Transfer(0xFF);
     SD_SPI_Transfer(0xFF);
 
-    // Read data response
     response = SD_SPI_Transfer(0xFF);
     if ((response & 0x1F) != 0x05) {
         SD_CS_HIGH();
         return SD_INIT_ERROR;
     }
 
-    // Wait for write to finish
     if (SD_WaitReady(5000) != SD_SUCCESS) {
         SD_CS_HIGH();
         return SD_TIMEOUT;
     }
 
     SD_CS_HIGH();
-    SD_SPI_Transfer(0xFF); // Extra dummy byte
+    SD_SPI_Transfer(0xFF);
 
     return SD_SUCCESS;
 }

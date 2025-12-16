@@ -6,8 +6,12 @@
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
-		<item key="selection" value="MOTOR_VOLTAGE_LIMIT"/>
+		<item key="selection" value=""/>
 		<list key="findhistory">
+			<item value="buffer"/>
+			<item value="write"/>
+			<item value="LCD"/>
+			<item value="log_counter"/>
 			<item value="MOTOR_VOLTAGE_LIMIT"/>
 			<item value="period"/>
 			<item value="LCD_Display_Update"/>
@@ -19,10 +23,6 @@
 			<item value="led_matrix_enabled"/>
 			<item value="LED_Matrix_Init"/>
 			<item value="bt_dma_byte"/>
-			<item value="system_mode"/>
-			<item value="Draw"/>
-			<item value="pendulum_angle"/>
-			<item value="SDA"/>
 		</list>
 		<list key="replacehistory">
 			<item value="led_display_enabled"/>

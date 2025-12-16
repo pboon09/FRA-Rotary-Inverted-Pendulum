@@ -61,6 +61,8 @@ extern LQR_Controller lqr_ctrl;
 /* ========== Kalman Filter Configuration ========== */
 extern KalmanFilter motor_filter;
 
+extern TIM_HandleTypeDef htim6;
+
 /* ========== Peripheral Handles ========== */
 extern LED_Matrix_Handle_t hmatrix;
 extern HC05_Handle_t hc05;
@@ -68,24 +70,24 @@ extern SD_Logger_Handle_t sd_logger;
 extern LCD_Handle_t hlcd;
 
 /* ========== LCD Display Configuration ========== */
-#define LCD_UPDATE_DIVIDER  1000
+#define LCD_UPDATE_DIVIDER  500
 
 /* ========== Communication Configuration ========== */
 extern UART_HandleTypeDef huart3;
 
 /* ========== System State Enum ========== */
-typedef enum {
-    STATE_WAIT_BUTTON,
-    STATE_KICK,
-    STATE_SWINGUP,
-    STATE_LQR,
-    STATE_EMERGENCY
-} PendulumState;
+//typedef enum {
+//    STATE_WAIT_BUTTON,
+//    STATE_KICK,
+//    STATE_SWINGUP,
+//    STATE_LQR,
+//    STATE_EMERGENCY
+//} PendulumState;
 
 /* ========== Global Flags (Optional Peripherals Only) ========== */
 extern volatile uint8_t led_matrix_enabled;
 extern volatile uint8_t sd_logger_enabled;
-//extern volatile uint8_t lcd_display_enabled;
+extern volatile uint8_t lcd_display_enabled;
 extern volatile uint8_t bluetooth_enabled;
 extern volatile uint8_t logging_enabled;
 

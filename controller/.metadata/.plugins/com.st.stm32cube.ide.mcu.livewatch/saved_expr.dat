@@ -1,3 +1,9 @@
 ID
 buffer
 lcd_display_enabled
+led_matrix_enable
+alpha
+theta
+alpha_dot
+theta_dot
+FreeMonoBold12pt7bGlyphs

@@ -1,6 +1,6 @@
 #include "led_matrix.h"
+#include "main.h"
 #include <stdlib.h>
-
 
 /* Row pin mapping arrays */
 static GPIO_TypeDef* const Row_Ports[LED_MATRIX_ROWS] = {
@@ -31,6 +31,11 @@ HAL_StatusTypeDef LED_Matrix_Init(LED_Matrix_Handle_t* hmatrix)
         return HAL_ERROR;
     }
 
+    /* Initialize state variables - CRITICAL for interrupt-based refresh */
+    hmatrix->current_row = 0;
+    hmatrix->last_refresh_tick = 0;
+    hmatrix->is_initialized = 0;  // Will be set to 1 after successful reset
+
     /* Clear frame buffer */
     LED_Matrix_ClearBuffer(hmatrix);
 
@@ -40,10 +45,12 @@ HAL_StatusTypeDef LED_Matrix_Init(LED_Matrix_Handle_t* hmatrix)
         return HAL_ERROR;
     }
 
+    /* Mark as initialized */
+    hmatrix->is_initialized = 1;
+
     Debug_Printf("LED_Matrix_Init: SUCCESS\r\n");
     return HAL_OK;
 }
-
 
 HAL_StatusTypeDef LED_Matrix_Reset(LED_Matrix_Handle_t* hmatrix)
 {
@@ -79,14 +86,12 @@ HAL_StatusTypeDef LED_Matrix_Reset(LED_Matrix_Handle_t* hmatrix)
     return HAL_OK;
 }
 
-
 void LED_Matrix_DisableAllRows(LED_Matrix_Handle_t* hmatrix)
 {
     for (int i = 0; i < LED_MATRIX_ROWS; i++) {
         HAL_GPIO_WritePin(Row_Ports[i], Row_Pins[i], GPIO_PIN_RESET);
     }
 }
-
 
 void LED_Matrix_EnableRow(LED_Matrix_Handle_t* hmatrix, uint8_t row)
 {
@@ -102,12 +107,10 @@ void LED_Matrix_EnableRow(LED_Matrix_Handle_t* hmatrix, uint8_t row)
     }
 }
 
-
 void LED_Matrix_SendData(LED_Matrix_Handle_t* hmatrix, uint8_t data)
 {
     DM163_SendByte(data);
 }
-
 
 void LED_Matrix_LatchData(LED_Matrix_Handle_t* hmatrix)
 {
@@ -115,7 +118,6 @@ void LED_Matrix_LatchData(LED_Matrix_Handle_t* hmatrix)
     HAL_Delay(1);
     HAL_GPIO_WritePin(LAT_GPIO_Port, LAT_Pin, GPIO_PIN_RESET);
 }
-
 
 void LED_Matrix_ClearBuffer(LED_Matrix_Handle_t* hmatrix)
 {
@@ -128,7 +130,6 @@ void LED_Matrix_ClearBuffer(LED_Matrix_Handle_t* hmatrix)
     }
 }
 
-
 void LED_Matrix_SetPixel(LED_Matrix_Handle_t* hmatrix, uint8_t row, uint8_t col, LED_Matrix_Color_t color)
 {
     if (row < LED_MATRIX_ROWS && col < LED_MATRIX_COLS) {
@@ -138,13 +139,11 @@ void LED_Matrix_SetPixel(LED_Matrix_Handle_t* hmatrix, uint8_t row, uint8_t col,
     }
 }
 
-
 void LED_Matrix_SetPixelRGB(LED_Matrix_Handle_t* hmatrix, uint8_t row, uint8_t col, uint8_t r, uint8_t g, uint8_t b)
 {
     LED_Matrix_Color_t color = {r, g, b};
     LED_Matrix_SetPixel(hmatrix, row, col, color);
 }
-
 
 LED_Matrix_Color_t LED_Matrix_GetPixel(LED_Matrix_Handle_t* hmatrix, uint8_t row, uint8_t col)
 {
@@ -159,25 +158,19 @@ LED_Matrix_Color_t LED_Matrix_GetPixel(LED_Matrix_Handle_t* hmatrix, uint8_t row
     return color;
 }
 
-
 void LED_Matrix_RefreshRow(LED_Matrix_Handle_t* hmatrix, uint8_t row)
 {
     if (row >= LED_MATRIX_ROWS) return;
 
-    /* Disable all rows first */
     LED_Matrix_DisableAllRows(hmatrix);
     LED_Matrix_Delay_us(5);
 
-    /* Load row data to DM163 */
     DM163_LoadRowData(hmatrix, row);
 
-    /* Enable this row */
     LED_Matrix_EnableRow(hmatrix, row);
 
-    /* Display time */
     LED_Matrix_Delay_us(500);
 }
-
 
 void LED_Matrix_RefreshDisplay(LED_Matrix_Handle_t* hmatrix, uint16_t duration_ms)
 {
@@ -192,6 +185,37 @@ void LED_Matrix_RefreshDisplay(LED_Matrix_Handle_t* hmatrix, uint16_t duration_m
     LED_Matrix_DisableAllRows(hmatrix);
 }
 
+/**
+ * @brief LED Matrix refresh function for timer ISR
+ * @param hmatrix: Pointer to LED matrix handle
+ *
+ * This function is called from TIM6 ISR every 500us
+ * It refreshes one row per call and cycles through all 8 rows
+ *
+ * IMPORTANT: This function is ISR-safe and fast (~50us execution time)
+ */
+void LED_Matrix_RefreshISR(LED_Matrix_Handle_t* hmatrix)
+{
+    if (!hmatrix->is_initialized) return;
+
+    /* Step 1: Disable all rows */
+    LED_Matrix_DisableAllRows(hmatrix);
+
+    /* Step 2: Small delay to prevent ghosting */
+    for (volatile int i = 0; i < 50; i++);  // ~5us at 170 MHz
+
+    /* Step 3: Load data for current row */
+    DM163_LoadRowData(hmatrix, hmatrix->current_row);
+
+    /* Step 4: Enable the current row */
+    LED_Matrix_EnableRow(hmatrix, hmatrix->current_row);
+
+    /* Step 5: Advance to next row for next ISR call */
+    hmatrix->current_row++;
+    if (hmatrix->current_row >= LED_MATRIX_ROWS) {
+        hmatrix->current_row = 0;
+    }
+}
 
 void LED_Matrix_DrawLine(LED_Matrix_Handle_t* hmatrix, int x0, int y0, int x1, int y1, LED_Matrix_Color_t color)
 {
@@ -220,7 +244,6 @@ void LED_Matrix_DrawLine(LED_Matrix_Handle_t* hmatrix, int x0, int y0, int x1, i
     }
 }
 
-
 void LED_Matrix_DrawCross(LED_Matrix_Handle_t* hmatrix, uint8_t center_row, uint8_t center_col, LED_Matrix_Color_t color)
 {
     LED_Matrix_ClearBuffer(hmatrix);
@@ -234,7 +257,6 @@ void LED_Matrix_DrawCross(LED_Matrix_Handle_t* hmatrix, uint8_t center_row, uint
     }
 }
 
-
 void LED_Matrix_DrawDiagonal(LED_Matrix_Handle_t* hmatrix, LED_Matrix_Color_t color)
 {
     LED_Matrix_ClearBuffer(hmatrix);
@@ -243,7 +265,6 @@ void LED_Matrix_DrawDiagonal(LED_Matrix_Handle_t* hmatrix, LED_Matrix_Color_t co
         LED_Matrix_SetPixel(hmatrix, i, i, color);
     }
 }
-
 
 void LED_Matrix_DrawPendulum(LED_Matrix_Handle_t* hmatrix, float theta, LED_Matrix_Color_t color)
 {
@@ -294,7 +315,6 @@ void LED_Matrix_Test_RowScan(LED_Matrix_Handle_t* hmatrix)
     LED_Matrix_DisableAllRows(hmatrix);
 }
 
-
 void LED_Matrix_Test_ColumnScan(LED_Matrix_Handle_t* hmatrix, uint8_t test_row)
 {
     for (int col = 0; col < LED_MATRIX_COLS; col++) {
@@ -306,9 +326,9 @@ void LED_Matrix_Test_ColumnScan(LED_Matrix_Handle_t* hmatrix, uint8_t test_row)
 
         for (int c = 0; c < LED_MATRIX_COLS; c++) {
             uint8_t val = (c == col) ? 0xFF : 0x00;
-            LED_Matrix_SendData(hmatrix, val); // ch1
-            LED_Matrix_SendData(hmatrix, val); // ch2
-            LED_Matrix_SendData(hmatrix, val); // ch3
+            LED_Matrix_SendData(hmatrix, val); // R
+            LED_Matrix_SendData(hmatrix, val); // G
+            LED_Matrix_SendData(hmatrix, val); // B
         }
 
         LED_Matrix_LatchData(hmatrix);
@@ -319,7 +339,6 @@ void LED_Matrix_Test_ColumnScan(LED_Matrix_Handle_t* hmatrix, uint8_t test_row)
 
     LED_Matrix_DisableAllRows(hmatrix);
 }
-
 
 void LED_Matrix_Test_AllWhite(LED_Matrix_Handle_t* hmatrix)
 {
@@ -332,7 +351,6 @@ void LED_Matrix_Test_AllWhite(LED_Matrix_Handle_t* hmatrix)
     LED_Matrix_RefreshDisplay(hmatrix, 2000);
 }
 
-
 void LED_Matrix_Test_SingleLED(LED_Matrix_Handle_t* hmatrix, uint8_t row, uint8_t col, LED_Matrix_Color_t color)
 {
     LED_Matrix_ClearBuffer(hmatrix);
@@ -340,13 +358,11 @@ void LED_Matrix_Test_SingleLED(LED_Matrix_Handle_t* hmatrix, uint8_t row, uint8_
     LED_Matrix_RefreshDisplay(hmatrix, 2000);
 }
 
-
 void LED_Matrix_Delay_us(uint32_t us)
 {
     volatile uint32_t counter = us * (SystemCoreClock / 1000000U / 3U);
     while(counter--);
 }
-
 
 void DM163_SendByte(uint8_t data)
 {
@@ -374,7 +390,6 @@ void DM163_SendByte(uint8_t data)
         data <<= 1;
     }
 }
-
 
 void DM163_LoadRowData(LED_Matrix_Handle_t* hmatrix, uint8_t row)
 {
