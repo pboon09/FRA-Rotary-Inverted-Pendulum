@@ -1,8 +1,8 @@
-../Core/Src/lcd_display.c:53:19:LCD_Display_Init	4
-../Core/Src/lcd_display.c:119:6:LCD_Display_SnapshotData	3
-../Core/Src/lcd_display.c:137:6:LCD_Display_Update	12
-../Core/Src/lcd_display.c:223:9:LCD_Display_ShouldUpdate	5
-../Core/Src/lcd_display.c:231:6:LCD_Display_IncrementCounter	4
-../Core/Src/lcd_display.c:243:6:LCD_Display_SetUpdateRate	3
-../Core/Src/lcd_display.c:254:6:LCD_Display_Clear	3
-../Core/Src/lcd_display.c:263:9:LCD_Display_IsInitialized	2
+../Core/Src/lcd_display.c:49:19:LCD_Display_Init	4
+../Core/Src/lcd_display.c:112:6:LCD_Display_SnapshotData	3
+../Core/Src/lcd_display.c:127:6:LCD_Display_Update	12
+../Core/Src/lcd_display.c:213:9:LCD_Display_ShouldUpdate	5
+../Core/Src/lcd_display.c:221:6:LCD_Display_IncrementCounter	4
+../Core/Src/lcd_display.c:233:6:LCD_Display_SetUpdateRate	3
+../Core/Src/lcd_display.c:244:6:LCD_Display_Clear	3
+../Core/Src/lcd_display.c:253:9:LCD_Display_IsInitialized	2

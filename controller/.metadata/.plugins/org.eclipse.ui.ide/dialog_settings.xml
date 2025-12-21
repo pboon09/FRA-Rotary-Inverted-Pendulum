@@ -9,6 +9,7 @@
 		<item key="SmartImportRootWizardPage.STORE_NESTED_PROJECTS" value="true"/>
 		<item key="SmartImportRootWizardPage.STORE_CONFIGURE_NATURES" value="true"/>
 		<list key="org.eclipse.ui.internal.wizards.datatransfer.SmartImportRootWizardPage.knownSources">
+			<item value="C:\fibo\3rd year_1st semester\embedded\L010_RTC"/>
 			<item value="C:\Users\bpbea\Downloads\Touch_Screen_LCD_Test\Touch_Screen_LCD_Test"/>
 			<item value="C:\Users\bpbea\Downloads\Touch_Screen_LCD_Test"/>
 			<item value="C:\fibo\3rd year_1st semester\embedded\HC05_Test"/>

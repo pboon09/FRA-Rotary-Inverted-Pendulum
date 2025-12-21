@@ -50,40 +50,20 @@ volatile uint8_t logging_enabled = 0;
 extern void Debug_Printf(const char* format, ...);
 
 void config_begin() {
-    Debug_Printf("\r\n========== System Initialization ==========\r\n");
+    Debug_Printf("\r\nSystem Initialization\r\n");
 
-    /* Start TIM1 for motor PWM */
-    Debug_Printf("Starting TIM1...\r\n");
-    HAL_TIM_Base_Start(&htim1);
-    HAL_Delay(100);
-
-    /* Initialize encoders */
-    Debug_Printf("Initializing encoders...\r\n");
     QEI_init(&motor_encoder, ENC_TIM1, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
     QEI_init(&pendulum_encoder, ENC_TIM2, ENC_PPR, ENC_FREQ, MOTOR_RATIO);
 
-    /* Initialize motor driver */
-    Debug_Printf("Initializing motor driver...\r\n");
     MDXX_GPIO_init(&motor, MOTOR1_TIM, MOTOR1_TIM_CH, MOTOR1_GPIOx, MOTOR1_GPIO_Pin);
     MDXX_set_range(&motor, 2000, 0);
 
-    /* Initialize filters */
-    Debug_Printf("Initializing filters...\r\n");
     FIR_init(&alpha_dot_filter, TAPS, CUTOFF, SAMPLING_RATE);
     FIR_init(&theta_dot_filter, TAPS, CUTOFF, SAMPLING_RATE);
-
-    /* Initialize swing-up controller */
-    Debug_Printf("Initializing controllers...\r\n");
     EnergyCtrl_Init(&swingup, PENDULUM_MASS, PENDULUM_LENGTH, PENDULUM_INERTIA, GRAVITY, ENERYGY_GAIN);
-
-    /* Initialize Kalman filter and LQR controller */
-    Debug_Printf("Initializing Kalman filter...\r\n");
     kf_init(&motor_filter, A, B, 1.0f, 0.0005f);
-    Debug_Printf("Initializing LQR...\r\n");
     LQR_Init(&lqr_ctrl, K_matlab, VOLTAGE_LIMIT);
 
-    /* Initialize LED matrix */
-    Debug_Printf("\r\n--- Optional Peripherals ---\r\n");
     if (LED_Matrix_Init(&hmatrix) == HAL_OK) {
         led_matrix_enabled = 1;
         Debug_Printf("LED Matrix: ENABLED\r\n");
@@ -92,7 +72,6 @@ void config_begin() {
         Debug_Printf("LED Matrix: DISABLED\r\n");
     }
 
-    /* Initialize SD card logger */
     if (SD_Logger_Init(&sd_logger) == HAL_OK) {
         sd_logger_enabled = 1;
         Debug_Printf("SD Logger: ENABLED\r\n");
@@ -101,7 +80,6 @@ void config_begin() {
         Debug_Printf("SD Logger: DISABLED\r\n");
     }
 
-    /* Initialize LCD display */
     if (LCD_Display_Init(&hlcd) == HAL_OK) {
         lcd_display_enabled = 1;
         LCD_Display_SetUpdateRate(&hlcd, LCD_UPDATE_DIVIDER);
@@ -111,15 +89,15 @@ void config_begin() {
         Debug_Printf("LCD Display: DISABLED\r\n");
     }
 
-    Debug_Printf("\r\n========== Initialization Complete ==========\r\n");
+    Debug_Printf("\r\nInitialization Complete\r\n");
     Debug_Printf("LED Matrix: %s\r\n", led_matrix_enabled ? "ON" : "OFF");
     Debug_Printf("SD Logger: %s\r\n", sd_logger_enabled ? "ON" : "OFF");
     Debug_Printf("LCD Display: %s\r\n", lcd_display_enabled ? "ON" : "OFF");
-    Debug_Printf("===========================================\r\n\r\n");
 
-    /* Start control timer */
-    HAL_TIM_Base_Start_IT(CONTROL_TIM);
+    HAL_TIM_Base_Start(&htim1);
     HAL_TIM_Base_Start_IT(&htim6);
+    HAL_TIM_Base_Start_IT(CONTROL_TIM);
+
 }
 
 void config_begin_communication() {
@@ -146,7 +124,7 @@ void HC05_CommandHandler(char *command) {
 
     HC05_SendFormatted(&hc05, "[RX]: %s\r\n", command);
 
-    /* Convert to uppercase */
+
     for (char *p = command; *p; p++) {
         *p = toupper(*p);
     }
@@ -314,10 +292,10 @@ void HC05_CommandHandler(char *command) {
                 day >= 1 && day <= 31) {
 
                 RTC_DateTypeDef sDate = {0};
-                sDate.Year = year - 2000;  // RTC stores years as offset from 2000
+                sDate.Year = year - 2000;
                 sDate.Month = month;
                 sDate.Date = day;
-                sDate.WeekDay = RTC_WEEKDAY_MONDAY;  // You can calculate actual weekday if needed
+                sDate.WeekDay = RTC_WEEKDAY_MONDAY;
 
                 if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) == HAL_OK) {
                     char msg[64];
@@ -421,11 +399,9 @@ void HC05_CommandHandler(char *command) {
         HC05_Send(&hc05, help_msg);
     }
 
-    /* ========== UNKNOWN COMMAND ========== */
     else {
         HC05_Send(&hc05, "[TX]: ERR - Unknown command (type HELP)\r\n");
     }
 
-    /* ========== PROMPT ========== */
     HC05_Send(&hc05, "\r\n> ");
 }

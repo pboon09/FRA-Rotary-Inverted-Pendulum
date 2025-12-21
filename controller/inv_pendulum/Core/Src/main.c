@@ -65,7 +65,7 @@ float alpha, alpha_shifted, alpha_dot, theta, theta_dot, voltage_input;
 volatile PendulumState state = STATE_WAIT_BUTTON;
 int kick_counter = 0;
 
-int debug, emer, released = 0;
+int debug, emer, released, led_counter = 0;
 static uint32_t last_log_time = 0;
 
 RTC_TimeTypeDef current_time_rtc;
@@ -165,16 +165,14 @@ int main(void)
 	    if (logging_enabled) {
 	        uint32_t current_time = HAL_GetTick();
 
-	        if ((current_time - last_log_time) >= 100) {  // 10 Hz
+	        if ((current_time - last_log_time) >= 10) {
 	            last_log_time = current_time;
 
-	            /* READ RTC TIME AND DATE - THIS WAS MISSING! */
 	            RTC_TimeTypeDef rtc_time;
 	            RTC_DateTypeDef rtc_date;
 	            HAL_RTC_GetTime(&hrtc, &rtc_time, RTC_FORMAT_BIN);
 	            HAL_RTC_GetDate(&hrtc, &rtc_date, RTC_FORMAT_BIN);
 
-	            /* Now write with actual RTC values */
 	            SD_Logger_WriteDataWithState(&sd_logger,
 	                                        &rtc_time,
 	                                        &rtc_date,
@@ -189,7 +187,6 @@ int main(void)
                 SD_Logger_FlushBuffer(&sd_logger);
             }
         }
-
 
 	}
   /* USER CODE END 3 */
@@ -294,13 +291,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
 		PendulumState current_state = state;
 
-		switch (current_state) {
+		switch (state) {
 		case STATE_WAIT_BUTTON:
 			if (emer) {
 				state = STATE_EMERGENCY;
 			}
 
 			cmd_lqr = 0;
+			if (++led_counter >= 100) {
+				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+				led_counter = 0;
+			}
 			if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
 				kick_counter = 0;
 				state = STATE_KICK;
@@ -315,7 +316,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 			break;
 		case STATE_KICK:
 			kick_counter++;
-			cmd_kick = (kick_counter < 250) ? 6000 : -6000;
+			cmd_kick = (kick_counter < 250) ? 7000 : -7000;
 
 			if (kick_counter < 500) {
 				MDXX_set_range(&motor, 2000, cmd_kick);
@@ -331,7 +332,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 				state = STATE_LQR;
 			} else {
 				cmd_energy_norm = EnergyCtrl_Update(&swingup, alpha, alpha_dot);
-				cmd_energy = (int) (cmd_energy_norm * 6000.0f);
+				cmd_energy = (int) (cmd_energy_norm * 6500.0f);
 				MDXX_set_range(&motor, 2000, cmd_energy);
 			}
 			break;
@@ -365,6 +366,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 					&& HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) == GPIO_PIN_SET) {
 				state = STATE_WAIT_BUTTON;
 				HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+				led_counter = 0;
 				released = 0;
 				debug = 0;
 			}

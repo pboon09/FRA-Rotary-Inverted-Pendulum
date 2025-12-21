@@ -12,6 +12,6 @@
 ../Core/Src/HC05.c:240:7:HC05_GetLine	16	static
 ../Core/Src/HC05.c:245:6:HC05_ClearLine	16	static
 ../Core/Src/HC05.c:251:6:HC05_ProcessReceivedByte	16	static
-../Core/Src/HC05.c:284:6:HC05_TrimLine	24	static
-../Core/Src/HC05.c:300:10:HC05_GetErrorCount	16	static
-../Core/Src/HC05.c:305:6:HC05_ResetErrorCount	16	static
+../Core/Src/HC05.c:286:6:HC05_TrimLine	24	static
+../Core/Src/HC05.c:302:10:HC05_GetErrorCount	16	static
+../Core/Src/HC05.c:307:6:HC05_ResetErrorCount	16	static

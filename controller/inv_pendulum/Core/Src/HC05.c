@@ -267,8 +267,10 @@ void HC05_ProcessReceivedByte(HC05_Handle_t *hhc05, uint8_t byte)
     else if (byte == 127 || byte == 8) {
         if (hhc05->line_index > 0) {
             hhc05->line_index--;
-            HAL_UART_Transmit(hhc05->huart, (uint8_t*)"\b \b", 3, 10);
+            hhc05->line_buffer[hhc05->line_index] = '\0';
+            HAL_UART_Transmit(hhc05->huart, (uint8_t*)" \b", 2, 10);
         }
+        return;
     }
     else if (byte >= 32 && byte < 127) {
         if (hhc05->line_index < HC05_LINE_BUFFER_SIZE - 1) {

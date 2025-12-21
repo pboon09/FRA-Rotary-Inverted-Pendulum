@@ -6,23 +6,23 @@
 		<item key="wholeword" value="false"/>
 		<item key="incremental" value="false"/>
 		<item key="isRegEx" value="false"/>
-		<item key="selection" value=""/>
+		<item key="selection" value="NO"/>
 		<list key="findhistory">
+			<item value="NO"/>
+			<item value="NO_AV"/>
+			<item value="NO_A"/>
+			<item value="released"/>
+			<item value="lcd_check"/>
+			<item value="led_check"/>
+			<item value="led_counter"/>
+			<item value="log_counter"/>
+			<item value="last_led_refresh"/>
+			<item value="Delay"/>
+			<item value="htim2"/>
 			<item value="buffer"/>
 			<item value="write"/>
 			<item value="LCD"/>
-			<item value="log_counter"/>
 			<item value="MOTOR_VOLTAGE_LIMIT"/>
-			<item value="period"/>
-			<item value="LCD_Display_Update"/>
-			<item value="Y_HEADER"/>
-			<item value="Pendulum_Update_Data"/>
-			<item value="Drawing ARM"/>
-			<item value="Debug_Printf"/>
-			<item value="led_display_enabled"/>
-			<item value="led_matrix_enabled"/>
-			<item value="LED_Matrix_Init"/>
-			<item value="bt_dma_byte"/>
 		</list>
 		<list key="replacehistory">
 			<item value="led_display_enabled"/>
@@ -31,8 +31,8 @@
 		</list>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
-		<item key="DIALOG_X_ORIGIN" value="1099"/>
-		<item key="DIALOG_Y_ORIGIN" value="208"/>
+		<item key="DIALOG_X_ORIGIN" value="1366"/>
+		<item key="DIALOG_Y_ORIGIN" value="240"/>
 		<item key="DIALOG_WIDTH" value="414"/>
 		<item key="DIALOG_HEIGHT" value="454"/>
 		<item key="DIALOG_FONT_NAME" value="1|Segoe UI|9.0|0|WINDOWS|1|-15|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI"/>

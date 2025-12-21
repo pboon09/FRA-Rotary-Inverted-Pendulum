@@ -35,7 +35,6 @@ extern volatile PendulumState state;
 #define Y_PEN_VEL_V         227
 #define Y_STATE_LABEL       250
 
-/* Display data snapshot - updated from ISR, read from main loop */
 typedef struct {
     float alpha_snap;
     float alpha_dot_snap;
@@ -47,9 +46,6 @@ typedef struct {
 
 static volatile LCD_Snapshot_t lcd_snapshot = {0};
 
-/**
- * @brief  Initialize LCD
- */
 HAL_StatusTypeDef LCD_Display_Init(LCD_Handle_t *hlcd)
 {
     char buffer[32];
@@ -113,9 +109,6 @@ HAL_StatusTypeDef LCD_Display_Init(LCD_Handle_t *hlcd)
     return HAL_OK;
 }
 
-/**
- * @brief  Snapshot data from ISR - FAST, no LCD access
- */
 void LCD_Display_SnapshotData(LCD_Handle_t *hlcd)
 {
     if (hlcd == NULL || !hlcd->initialized) {
@@ -131,9 +124,6 @@ void LCD_Display_SnapshotData(LCD_Handle_t *hlcd)
     lcd_snapshot.data_ready = 1;
 }
 
-/**
- * @brief  Update display from main loop - SLOW, uses snapshot
- */
 void LCD_Display_Update(LCD_Handle_t *hlcd)
 {
     char buffer[32];

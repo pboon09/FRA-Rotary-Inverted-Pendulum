@@ -12,6 +12,6 @@
 ../Core/Src/HC05.c:240:7:HC05_GetLine	1
 ../Core/Src/HC05.c:245:6:HC05_ClearLine	1
 ../Core/Src/HC05.c:251:6:HC05_ProcessReceivedByte	10
-../Core/Src/HC05.c:284:6:HC05_TrimLine	9
-../Core/Src/HC05.c:300:10:HC05_GetErrorCount	1
-../Core/Src/HC05.c:305:6:HC05_ResetErrorCount	1
+../Core/Src/HC05.c:286:6:HC05_TrimLine	9
+../Core/Src/HC05.c:302:10:HC05_GetErrorCount	1
+../Core/Src/HC05.c:307:6:HC05_ResetErrorCount	1

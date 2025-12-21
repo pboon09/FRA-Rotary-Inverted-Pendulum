@@ -1,7 +1,3 @@
-/*
- * sd_logger.c - Complete implementation with RTC timestamp and state logging
- */
-
 #include "sd_logger.h"
 #include <string.h>
 #include <stdio.h>

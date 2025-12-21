@@ -1,8 +1,8 @@
-../Core/Src/lcd_display.c:53:19:LCD_Display_Init	56	static
-../Core/Src/lcd_display.c:119:6:LCD_Display_SnapshotData	16	static
-../Core/Src/lcd_display.c:137:6:LCD_Display_Update	88	static
-../Core/Src/lcd_display.c:223:9:LCD_Display_ShouldUpdate	16	static
-../Core/Src/lcd_display.c:231:6:LCD_Display_IncrementCounter	16	static
-../Core/Src/lcd_display.c:243:6:LCD_Display_SetUpdateRate	16	static
-../Core/Src/lcd_display.c:254:6:LCD_Display_Clear	16	static
-../Core/Src/lcd_display.c:263:9:LCD_Display_IsInitialized	16	static
+../Core/Src/lcd_display.c:49:19:LCD_Display_Init	56	static
+../Core/Src/lcd_display.c:112:6:LCD_Display_SnapshotData	16	static
+../Core/Src/lcd_display.c:127:6:LCD_Display_Update	88	static
+../Core/Src/lcd_display.c:213:9:LCD_Display_ShouldUpdate	16	static
+../Core/Src/lcd_display.c:221:6:LCD_Display_IncrementCounter	16	static
+../Core/Src/lcd_display.c:233:6:LCD_Display_SetUpdateRate	16	static
+../Core/Src/lcd_display.c:244:6:LCD_Display_Clear	16	static
+../Core/Src/lcd_display.c:253:9:LCD_Display_IsInitialized	16	static
