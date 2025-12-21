@@ -1,4 +1,0 @@
-../Drivers/CMSIS/Include/core_cm4.h:1831:26:__NVIC_GetPriority	2
-../Core/Src/rip_config.c:45:6:config_begin	2
-../Core/Src/rip_config.c:133:6:config_begin_communication	2
-../Core/Src/rip_config.c:153:6:HC05_CommandHandler	37

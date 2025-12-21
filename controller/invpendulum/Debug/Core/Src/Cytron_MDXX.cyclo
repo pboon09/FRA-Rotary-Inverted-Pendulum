@@ -1,4 +1,0 @@
-../Core/Src/Cytron_MDXX.c:3:6:MDXX_TIM_init	1
-../Core/Src/Cytron_MDXX.c:14:6:MDXX_GPIO_init	1
-../Core/Src/Cytron_MDXX.c:24:6:MDXX_set_duty	7
-../Core/Src/Cytron_MDXX.c:56:6:MDXX_set_range	7
